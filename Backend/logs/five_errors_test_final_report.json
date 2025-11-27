@@ -1,0 +1,34 @@
+{
+  "metadata": {
+    "file_path": "backend/tests/five_errors_test.py",
+    "timestamp": "2025-11-27T21:25:07.565606",
+    "execution_time_seconds": 1764258907.57,
+    "total_iterations": 1
+  },
+  "status": {
+    "emoji": "✅",
+    "text": "Fixed",
+    "success": true,
+    "final_status": "success"
+  },
+  "errors": {
+    "detected_types": [],
+    "count": 0
+  },
+  "patches": {
+    "applied_count": 0,
+    "summaries": []
+  },
+  "code_changes": {
+    "diff": [],
+    "lines_changed": 0,
+    "original_lines": 61,
+    "final_lines": 61
+  },
+  "logs": {
+    "stdout": [],
+    "stderr": []
+  },
+  "original_code": "\"\"\"Five Error Test - Fresh\"\"\"\n\ndef calculate_average(numbers):\n    \"\"\"Bug 1: ZeroDivisionError\"\"\"\n    total = sum(numbers)\n    avg = total / len(numbers) if len(numbers) != 0 else 0\n    return avg\n\ndef get_user_info():\n    \"\"\"Bug 2: NameError\"\"\"\n    user_name = \"Alice\"\n    user_age = 25\n    return f\"{user_name} is {user_age} years old\"\n\ndef process_list(items):\n    \"\"\"Bug 3: IndexError\"\"\"\n    first = items[0]\n    last = items[len(items)-1]\n    return first, last\n\ndef concatenate_data(text, num):\n    \"\"\"Bug 4: TypeError\"\"\"\n    result = text + str(num)\n    return result\n\ndef format_text(message):\n    \"\"\"Bug 5: AttributeError\"\"\"\n    formatted = message.lower()\n    return formatted\n\ndef main():\n    print(\"=== Testing 5 Errors ===\\n\")\n    \n    print(\"Test 1: ZeroDivisionError\")\n    empty_list = []\n    avg = calculate_average(empty_list)\n    print(f\"Average: {avg}\")\n    \n    print(\"\\nTest 2: NameError\")\n    info = get_user_info()\n    print(info)\n    \n    print(\"\\nTest 3: IndexError\")\n    my_list = [1, 2, 3, 4, 5]\n    first, last = process_list(my_list)\n    print(f\"First: {first}, Last: {last}\")\n    \n    print(\"\\nTest 4: TypeError\")\n    combined = concatenate_data(\"Value: \", 42)\n    print(combined)\n    \n    print(\"\\nTest 5: AttributeError\")\n    text = \"HELLO WORLD\"\n    lower_text = format_text(text)\n    print(f\"Lowercase: {lower_text}\")\n    \n    print(\"\\n=== All Tests Complete ===\")\n\nif __name__ == \"__main__\":\n    main()\n",
+  "final_code": "\"\"\"Five Error Test - Fresh\"\"\"\n\ndef calculate_average(numbers):\n    \"\"\"Bug 1: ZeroDivisionError\"\"\"\n    total = sum(numbers)\n    avg = total / len(numbers) if len(numbers) != 0 else 0\n    return avg\n\ndef get_user_info():\n    \"\"\"Bug 2: NameError\"\"\"\n    user_name = \"Alice\"\n    user_age = 25\n    return f\"{user_name} is {user_age} years old\"\n\ndef process_list(items):\n    \"\"\"Bug 3: IndexError\"\"\"\n    first = items[0]\n    last = items[len(items)-1]\n    return first, last\n\ndef concatenate_data(text, num):\n    \"\"\"Bug 4: TypeError\"\"\"\n    result = text + str(num)\n    return result\n\ndef format_text(message):\n    \"\"\"Bug 5: AttributeError\"\"\"\n    formatted = message.lower()\n    return formatted\n\ndef main():\n    print(\"=== Testing 5 Errors ===\\n\")\n    \n    print(\"Test 1: ZeroDivisionError\")\n    empty_list = []\n    avg = calculate_average(empty_list)\n    print(f\"Average: {avg}\")\n    \n    print(\"\\nTest 2: NameError\")\n    info = get_user_info()\n    print(info)\n    \n    print(\"\\nTest 3: IndexError\")\n    my_list = [1, 2, 3, 4, 5]\n    first, last = process_list(my_list)\n    print(f\"First: {first}, Last: {last}\")\n    \n    print(\"\\nTest 4: TypeError\")\n    combined = concatenate_data(\"Value: \", 42)\n    print(combined)\n    \n    print(\"\\nTest 5: AttributeError\")\n    text = \"HELLO WORLD\"\n    lower_text = format_text(text)\n    print(f\"Lowercase: {lower_text}\")\n    \n    print(\"\\n=== All Tests Complete ===\")\n\nif __name__ == \"__main__\":\n    main()\n"
+}

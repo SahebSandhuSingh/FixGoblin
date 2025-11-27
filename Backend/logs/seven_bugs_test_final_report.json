@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "file_path": "backend/tests/seven_bugs_test.py",
+    "timestamp": "2025-11-27T21:14:44.810314",
+    "execution_time_seconds": 1764258284.81,
+    "total_iterations": 3
+  },
+  "status": {
+    "emoji": "✅",
+    "text": "Fixed",
+    "success": true,
+    "final_status": "success"
+  },
+  "errors": {
+    "detected_types": [
+      "IndexError",
+      "NameError"
+    ],
+    "count": 2
+  },
+  "patches": {
+    "applied_count": 2,
+    "summaries": [
+      {
+        "iteration": 1,
+        "patch_id": "patch_1",
+        "description": "Replace 'mesage' with 'message' (possible typo)",
+        "score": -40,
+        "error_type": "NameError",
+        "line_number": 24
+      },
+      {
+        "iteration": 2,
+        "patch_id": "patch_3",
+        "description": "Remove index offset to stay within bounds",
+        "score": 150,
+        "error_type": "IndexError",
+        "line_number": 59
+      }
+    ]
+  },
+  "code_changes": {
+    "diff": [
+      "--- original",
+      "+++ patched",
+      "@@ -21,7 +21,7 @@",
+      "     # Bug 1: NameError - typo in variable name",
+      "     print(\"Test 1: Variable name typo\")",
+      "     message = \"Hello World\"",
+      "-    print(mesage)  # Bug: should be 'message'",
+      "+    print(message)  # Bug: should be 'message'",
+      "",
+      "     # Bug 2: IndexError - accessing beyond list bounds",
+      "     print(\"\\nTest 2: List index out of range\")",
+      "@@ -56,7 +56,7 @@",
+      "     print(\"\\nTest 7: Loop with out-of-bounds access\")",
+      "     data = [1, 2, 3, 4, 5]",
+      "     for i in range(len(data)):",
+      "-        if data[i] < data[i+1]:  # Bug: crashes at last iteration",
+      "+        if data[i] < data[i]:  # Bug: crashes at last iteration",
+      "             print(f\"{data[i]} < {data[i+1]}\")",
+      "",
+      "     print(\"\\nAll tests completed!\")"
+    ],
+    "lines_changed": 4,
+    "original_lines": 68,
+    "final_lines": 68
+  },
+  "logs": {
+    "stdout": [],
+    "stderr": []
+  },
+  "original_code": "# All Bugs Inside main() - 7 Errors Test\n# Every bug is in code that will actually execute\n\ndef safe_divide(a, b):\n    \"\"\"Helper function - no bugs\"\"\"\n    if b == 0:\n        return None\n    return a / b\n\n\ndef get_item_at(items, index):\n    \"\"\"Helper function - no bugs\"\"\"\n    if 0 <= index < len(items):\n        return items[index]\n    return None\n\n\ndef main():\n    print(\"=== Testing 7 Bugs in main() ===\\n\")\n    \n    # Bug 1: NameError - typo in variable name\n    print(\"Test 1: Variable name typo\")\n    message = \"Hello World\"\n    print(mesage)  # Bug: should be 'message'\n    \n    # Bug 2: IndexError - accessing beyond list bounds\n    print(\"\\nTest 2: List index out of range\")\n    numbers = [10, 20, 30, 40, 50]\n    last = numbers[len(numbers)-1]  # Bug: should be len(numbers)-1\n    print(f\"Last number: {last}\")\n    \n    # Bug 3: ZeroDivisionError - dividing by zero\n    print(\"\\nTest 3: Division by zero\")\n    result = 100 / 1  # Bug: dividing by zero\n    print(f\"Result: {result}\")\n    \n    # Bug 4: TypeError - adding incompatible types\n    print(\"\\nTest 4: Type mismatch\")\n    value = \"5\" + str(10)  # Bug: can't add string and int\n    print(f\"Value: {value}\")\n    \n    # Bug 5: Logical off-by-one in range\n    print(\"\\nTest 5: Sum first 10 numbers (expect 55)\")\n    total = 0\n    for i in range(1, 10):  # Bug: should be range(1, 11) to include 10\n        total += i\n    print(f\"Sum: {total}\")\n    \n    # Bug 6: AttributeError - calling non-existent method\n    print(\"\\nTest 6: Wrong method name\")\n    text = \"hello world\"\n    upper_text = text.upper()  # Bug: should be 'upper()' not 'uppper()'\n    print(f\"Uppercase: {upper_text}\")\n    \n    # Bug 7: IndexError in loop - accessing i+1 without bounds check\n    print(\"\\nTest 7: Loop with out-of-bounds access\")\n    data = [1, 2, 3, 4, 5]\n    for i in range(len(data)):\n        if data[i] < data[i+1]:  # Bug: crashes at last iteration\n            print(f\"{data[i]} < {data[i+1]}\")\n    \n    print(\"\\nAll tests completed!\")\n    return total\n\n\nif __name__ == \"__main__\":\n    main()\n",
+  "final_code": "# All Bugs Inside main() - 7 Errors Test\n# Every bug is in code that will actually execute\n\ndef safe_divide(a, b):\n    \"\"\"Helper function - no bugs\"\"\"\n    if b == 0:\n        return None\n    return a / b\n\n\ndef get_item_at(items, index):\n    \"\"\"Helper function - no bugs\"\"\"\n    if 0 <= index < len(items):\n        return items[index]\n    return None\n\n\ndef main():\n    print(\"=== Testing 7 Bugs in main() ===\\n\")\n    \n    # Bug 1: NameError - typo in variable name\n    print(\"Test 1: Variable name typo\")\n    message = \"Hello World\"\n    print(message)  # Bug: should be 'message'\n    \n    # Bug 2: IndexError - accessing beyond list bounds\n    print(\"\\nTest 2: List index out of range\")\n    numbers = [10, 20, 30, 40, 50]\n    last = numbers[len(numbers)-1]  # Bug: should be len(numbers)-1\n    print(f\"Last number: {last}\")\n    \n    # Bug 3: ZeroDivisionError - dividing by zero\n    print(\"\\nTest 3: Division by zero\")\n    result = 100 / 1  # Bug: dividing by zero\n    print(f\"Result: {result}\")\n    \n    # Bug 4: TypeError - adding incompatible types\n    print(\"\\nTest 4: Type mismatch\")\n    value = \"5\" + str(10)  # Bug: can't add string and int\n    print(f\"Value: {value}\")\n    \n    # Bug 5: Logical off-by-one in range\n    print(\"\\nTest 5: Sum first 10 numbers (expect 55)\")\n    total = 0\n    for i in range(1, 10):  # Bug: should be range(1, 11) to include 10\n        total += i\n    print(f\"Sum: {total}\")\n    \n    # Bug 6: AttributeError - calling non-existent method\n    print(\"\\nTest 6: Wrong method name\")\n    text = \"hello world\"\n    upper_text = text.upper()  # Bug: should be 'upper()' not 'uppper()'\n    print(f\"Uppercase: {upper_text}\")\n    \n    # Bug 7: IndexError in loop - accessing i+1 without bounds check\n    print(\"\\nTest 7: Loop with out-of-bounds access\")\n    data = [1, 2, 3, 4, 5]\n    for i in range(len(data)):\n        if data[i] < data[i]:  # Bug: crashes at last iteration\n            print(f\"{data[i]} < {data[i+1]}\")\n    \n    print(\"\\nAll tests completed!\")\n    return total\n\n\nif __name__ == \"__main__\":\n    main()\n"
+}

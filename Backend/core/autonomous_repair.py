@@ -8,6 +8,7 @@ into a self-healing repair system.
 """
 
 import os
+import time
 import pathlib
 from typing import Dict, List, Any, Optional
 from core.sandbox_runner import run_in_sandbox
@@ -15,6 +16,7 @@ from core.error_parser import parse_error
 from core.patch_generator import generate_patch_candidates
 from core.patch_optimizer import select_best_patch, apply_patch_to_file
 from core.logical_validator import validate_logic, format_logical_error
+from core.final_report import generate_final_report, collect_repair_context
 
 
 def autonomous_repair(
@@ -54,12 +56,16 @@ def autonomous_repair(
     print(f"⚡ Efficiency Mode: {'ENABLED' if optimize_efficiency else 'DISABLED'}")
     print("=" * 80)
     
+    # Start timing
+    start_time = time.time()
+    
     # Validate file exists
     if not os.path.exists(file_path):
         return _create_failure_result(
             f"File not found: {file_path}",
             None,
-            []
+            [],
+            ""
         )
     
     # Load initial code
@@ -70,7 +76,8 @@ def autonomous_repair(
         return _create_failure_result(
             f"Failed to read file: {e}",
             None,
-            []
+            [],
+            ""
         )
     
     # Initialize tracking
@@ -186,7 +193,8 @@ def autonomous_repair(
             return _create_success_result(
                 final_code,
                 iteration_logs,
-                current_iteration
+                current_iteration,
+                initial_code
             )
         
         # Code has errors - proceed with repair
@@ -220,7 +228,8 @@ def autonomous_repair(
             return _create_failure_result(
                 "Could not parse error",
                 final_code,
-                iteration_logs
+                iteration_logs,
+                initial_code
             )
         
         print(f"   Type: {error_data['error_type']}")
@@ -252,7 +261,8 @@ def autonomous_repair(
             return _create_failure_result(
                 "No patches could be generated",
                 current_code,
-                iteration_logs
+                iteration_logs,
+                initial_code
             )
         
         print(f"   Generated {len(patches)} patch candidate(s)")
@@ -281,7 +291,8 @@ def autonomous_repair(
             return _create_failure_result(
                 "No suitable patch found",
                 current_code,
-                iteration_logs
+                iteration_logs,
+                initial_code
             )
         
         print(f"   Selected: {best_patch['id']}")
@@ -309,7 +320,8 @@ def autonomous_repair(
             return _create_failure_result(
                 "Failed to apply patch",
                 current_code,
-                iteration_logs
+                iteration_logs,
+                initial_code
             )
         
         print(f"   ✅ Applied: {apply_result['backup_path']}")
@@ -342,6 +354,7 @@ def autonomous_repair(
     return {
         "success": False,
         "final_code": final_code,
+        "initial_code": initial_code,
         "iterations": iteration_logs,
         "total_iterations": current_iteration,
         "final_status": "max_iterations_reached",
@@ -356,12 +369,14 @@ def autonomous_repair(
 def _create_success_result(
     final_code: str, 
     iterations: List[Dict[str, Any]], 
-    total: int
+    total: int,
+    initial_code: str = ""
 ) -> Dict[str, Any]:
     """Create a successful repair result."""
     return {
         "success": True,
         "final_code": final_code,
+        "initial_code": initial_code,
         "iterations": iterations,
         "total_iterations": total,
         "final_status": "success",
@@ -372,12 +387,14 @@ def _create_success_result(
 def _create_failure_result(
     reason: str, 
     final_code: Optional[str], 
-    iterations: List[Dict[str, Any]]
+    iterations: List[Dict[str, Any]],
+    initial_code: str = ""
 ) -> Dict[str, Any]:
     """Create a failure result."""
     return {
         "success": False,
         "final_code": final_code,
+        "initial_code": initial_code,
         "iterations": iterations,
         "total_iterations": len(iterations),
         "final_status": "failed",
@@ -495,6 +512,12 @@ Examples:
         help='Suppress detailed output (only show summary)'
     )
     
+    parser.add_argument(
+        '--final-report',
+        action='store_true',
+        help='Generate comprehensive final debugging report'
+    )
+    
     args = parser.parse_args()
     
     # Run autonomous repair
@@ -511,6 +534,35 @@ Examples:
     # Save log if requested
     if args.log:
         save_repair_log(result, args.log)
+    
+    # Generate final report if requested
+    if args.final_report:
+        try:
+            # Read final code
+            with open(args.file_path, 'r', encoding='utf-8') as f:
+                final_code = f.read()
+            
+            # Get initial code from result (stored at start of repair)
+            initial_code = result.get('initial_code', '')
+            
+            # Collect context for report
+            context = collect_repair_context(
+                file_path=args.file_path,
+                original_code=initial_code,
+                final_code=final_code,
+                iterations_log=result.get('iterations', []),
+                start_time=0,  # Time already calculated
+                success=result['success'],
+                final_status=result['final_status']
+            )
+            
+            # Add execution time from result if available
+            if 'execution_time' in result:
+                context['execution_time'] = result['execution_time']
+            
+            generate_final_report(context)
+        except Exception as e:
+            print(f"\n⚠️ Failed to generate final report: {e}")
     
     # Exit with appropriate code
     sys.exit(0 if result['success'] else 1)

@@ -4,6 +4,8 @@
 
 FixGoblin is a complete autonomous debugging system that automatically detects, analyzes, and fixes bugs in code through iterative self-repair. Detects both **runtime crashes** and **logical errors** (off-by-one bugs, missing returns, etc.).
 
+**NEW:** Comprehensive final report generation with colored terminal output and JSON export!
+
 ## 📁 Project Structure
 
 ```
@@ -18,7 +20,8 @@ FixGoblin/
     │   ├── patch_generator.py
     │   ├── patch_optimizer.py
     │   ├── autonomous_repair.py
-    │   └── logical_validator.py
+    │   ├── logical_validator.py
+    │   └── final_report.py   # ⭐ NEW: Report generation
     │
     ├── backups/              # Backup files (*.backup)
     ├── logs/                 # Repair logs (*.json)
@@ -33,8 +36,8 @@ FixGoblin/
 # Run FixGoblin on any Python file
 python fixgoblin.py backend/tests/your_code.py
 
-# Save detailed repair log
-python fixgoblin.py backend/tests/your_code.py --log backend/logs/repair.json
+# Save detailed repair log + final report
+python fixgoblin.py backend/tests/your_code.py --log backend/logs/repair.json --final-report
 
 # Limit repair iterations
 python fixgoblin.py backend/tests/your_code.py --max-iterations 3
@@ -129,17 +132,58 @@ python3 fixgoblin.py user.py --apply --optimize
 
 ### Flags
 
-**Autonomous Repair (`autonomous_repair.py`):**
+**Autonomous Repair (`fixgoblin.py`):**
 - `--max-iterations N` : Maximum repair attempts (default: 5)
 - `--optimize` : Generate efficiency improvement patches
 - `--log FILE` : Save repair history to JSON file
 - `--quiet` : Suppress detailed output
+- `--final-report` : Generate comprehensive debugging report ⭐ NEW
 
-**Single-Pass (`fixgoblin.py`):**
+**Legacy Single-Pass:**
 - `--apply`, `-a` : Automatically apply the best patch
 - `--optimize`, `-o` : Generate efficiency improvement patches (max 2)
 
 ## 📊 Example Output
+
+### Final Report (NEW!) ⭐
+
+```
+================================================================================
+🔍 FINAL DEBUGGING REPORT
+================================================================================
+
+📁 File: backend/tests/user.py
+⏱️  Execution Time: 2.5s
+🔄 Total Iterations: 3
+📅 Generated: 2025-11-27T19:48:25
+
+✅ Status: Fixed
+   Success: True
+   Final Status: success
+
+🐛 Detected Error Types (2):
+   - IndexError: list index out of range (Line 45)
+   - TypeError: unsupported operand type(s)
+
+🔧 Applied Patches (2):
+   - Patch #1: Fixed IndexError (Score: 120)
+   - Patch #2: Fixed TypeError (Score: 100)
+
+📄 Code Changes:
+   Original Lines: 50
+   Final Lines: 52
+   Lines Changed: 5
+
+📊 Code Diff (Preview):
+   --- original
+   +++ patched
+   @@ -42,7 +42,7 @@
+    def process_list(items):
+   -    return items[len(items)]  # BUG: IndexError
+   +    return items[len(items)-1]  # FIXED
+
+📄 Full report saved to: backend/logs/user_final_report.json
+```
 
 ### Autonomous Repair Loop
 
@@ -203,6 +247,13 @@ python3 fixgoblin.py user.py --apply --optimize
 ```
 
 ## 🎓 Key Features
+
+### Final Report Generation ⭐ NEW
+- **Terminal Output**: Colored, human-readable report with emojis
+- **JSON Export**: Machine-readable logs for CI/CD integration
+- **Code Diff**: Unified diff showing all changes (colored +/-)
+- **Comprehensive Data**: Status, errors, patches, execution time
+- **See**: [FINAL_REPORT.md](backend/docs/FINAL_REPORT.md) for detailed guide
 
 ### Iterative Self-Repair ⭐
 - **Automatic Iteration**: Fixes bugs one-by-one until code works

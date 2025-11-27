@@ -163,7 +163,40 @@ def run_in_sandbox(file_path: str, timeout: int = 3) -> Dict[str, Any]:
 # ---------------------------------------------
 
 def _execute_python(source_file: pathlib.Path, sandbox: pathlib.Path, timeout: int) -> Dict[str, Any]:
-    """Execute Python code in sandbox."""
+    """Execute Python code in sandbox with syntax validation."""
+    # Read source code for syntax validation
+    try:
+        with open(source_file, 'r', encoding='utf-8') as f:
+            source_code = f.read()
+    except Exception as e:
+        return {
+            "language": "python",
+            "stdout": "",
+            "stderr": f"Error reading file: {str(e)}",
+            "returncode": 1,
+            "executed_command": []
+        }
+    
+    # Validate syntax using compile() before execution
+    try:
+        compile(source_code, str(source_file), 'exec')
+    except SyntaxError as e:
+        # Format syntax error in same way as runtime errors
+        error_msg = f"  File \"{source_file}\", line {e.lineno}\n"
+        if e.text:
+            error_msg += f"    {e.text}"
+            if e.offset:
+                error_msg += f"    {' ' * (e.offset - 1)}^\n"
+        error_msg += f"SyntaxError: {e.msg}"
+        
+        return {
+            "language": "python",
+            "stdout": "",
+            "stderr": error_msg,
+            "returncode": 1,
+            "executed_command": []
+        }
+    
     # Copy source file to sandbox as main.py
     sandbox_file = sandbox / "main.py"
     shutil.copy2(source_file, sandbox_file)

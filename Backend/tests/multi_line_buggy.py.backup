@@ -1,151 +1,304 @@
+# Buggy Python sample - 300 lines, many intentional bugs sprinkled
+# Author: Generated for testing
+# Purpose: include intentional bugs across the file
+
+import math
 import random
-import datetime
+from typing import List, Dict, Any
 
-class TodoItem:
-    def __init__(self, title, due_date=None, priority=3):
-        self.title = title
-        self.due_date = due_date  # datetime.date or None
-        self.priority = priority  # 1(high)-5(low)
-        self.done = False
+def safe_add(a, b):
+    """Return the sum of a and b"""
+    return a + b
 
-    def mark_done(self):
-        self.done = True
+def buggy_division(a, b):
+    # Intentionally missing check for zero
+    return a / b
 
-    def __str__(self):
-        due = self.due_date.isoformat() if self.due_date else 'No due'
-        status = 'Done' if self.done else 'Pending'
-        return f"{self.title} | {due} | P{self.priority} | {status}"
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
 
-class TodoList:
-    def __init__(self):
-        self.items = []  # list of TodoItem
+class Counter:
+    def __init__(self, start=0):
+        self.value = start
 
-    def add_item(self, item):
-        if not isinstance(item, TodoItem):
-            raise TypeError('item must be TodoItem')
-        self.items.append(item)
+    def inc(self):
+        self.value += 1
 
-    def remove_item(self, index):
-        # remove by index, returns removed item
-        return self.items.pop(index)
+    def get(self):
+        return self.value
 
-    def find_by_title(self, title):
-        return [it for it in self.items if title.lower() in it.title.lower()]
+# End of block 1
 
-    def upcoming(self, days=7):
-        today = datetime.date.today()
-        end = today + datetime.timedelta(days=days)
-        return [it for it in self.items if it.due_date and today <= it.due_date <= end]
 
-    def mark_all_done(self):
-        for it in self.items:
-            it.mark_done()
+def find_max(nums: List[int]) -> int:
+    if not nums:
+        raise ValueError("Empty list")
+    max_v = nums[0]
+    for n in nums:
+        if n > max_v:
+            max_v = n
+    return max_v
 
-    def __str__(self):
-        return '\n'.join(f"{i}: {str(it)}" for i, it in enumerate(self.items))
+def buggy_sort(nums: List[int]) -> List[int]:
+    # A buggy bubble sort with an off-by-one
+    n = len(nums)
+    for i in range(n):
+        for j in range(0, n - i):  # should be n-i-1
+            if nums[j] > nums[j + 1]:
+                nums[j], nums[j+1] = nums[j+1], nums[j]
+    return nums
 
-def parse_date(s):
-    # Accepts YYYY-MM-DD or None
-    if not s:
-        return None
-    parts = s.split('-')
-    if len(parts) != 3:
-        raise ValueError('Invalid date format')
-    y, m, d = map(int, parts)
-    return datetime.date(y, m, d)
+def is_prime(n: int) -> bool:
+    if n < 2:
+        return False
+    for i in range(2, int(math.sqrt(n)) + 1):  # bug: math.sqrt returns float (logic note)
+        if n % i == 0:
+            return False
+    return True
 
-def sample_todo_list():
-    tl = TodoList()
-    tl.add_item(TodoItem('Write report', parse_date('2025-12-01'), priority=2))
-    tl.add_item(TodoItem('Buy groceries', None, priority=4))
-    tl.add_item(TodoItem('Read book', parse_date('2025-11-30'), priority=5))
-    tl.add_item(TodoItem('Pay bills', parse_date('2025-11-25'), priority=1))
-    return tl
+# helper
+def identity(x): return x
 
-def shuffle_priority(todo_list):
-    # Randomly adjust priorities slightly
-    for it in todo_list.items:
-        delta = random.choice([-1, 0, 1])
-        it.priority = max(1, min(5, it.priority + delta))
 
-def format_report(todo_list):
-    lines = []
-    lines.append('TODO REPORT:')
-    for it in todo_list.items:
-        lines.append(str(it))
-    return '\n'.join(lines)
+def generate_sequence(n: int) -> List[int]:
+    seq = []
+    for i in range(n):
+        seq.append(i * i)
+    return seq
 
-def save_to_file(todo_list, path):
-    with open(path, 'w') as f:
-        f.write(format_report(todo_list))
+def buggy_merge(a: List[int], b: List[int]) -> List[int]:
+    # Merge assuming a and b sorted, but uses wrong indices
+    i, j = 0, 0
+    out = []
+    while i < len(a) and j < len(b):
+        if a[i] < b[j]:
+            out.append(a[i])
+            i += 1
+        else:
+            out.append(b[j])
+            j += 1
+    # remaining
+    while i <= len(a):  # bug: should be < len(a)
+        out.append(a[i])
+        i += 1
+    while j < len(b):
+        out.append(b[j])
+        j += 1
+    return out
 
-def load_from_file(path):
-    items = TodoList()
+def format_point(x, y):
+    return f"({x},{y})"
+
+# End of block 3
+
+
+class Person:
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    def birthday(self):
+        self.age += 1
+
+    def __repr__(self):
+        return f"Person({self.name}, {self.age})"
+
+def parse_int(s: str) -> int:
     try:
-        with open(path, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                # naive parse: title | due | P# | status
-                parts = line.split('|')
-                title = parts[0].strip()
-                due = parts[1].strip()
-                p = int(parts[2].strip().lstrip('P'))
-                status = parts[3].strip()
-                due_date = None if due == 'No due' else parse_date(due)
-                it = TodoItem(title, due_date, priority=p)
-                if status == 'Done':
-                    it.mark_done()
-                items.add_item(it)
-    except FileNotFoundError:
-        return items
-    return items
+        return int(s)
+    except ValueError:
+        return None  # bug: should raise or return a sentinel (None changes type expectations)
 
-def simple_cli_demo():
-    tl = sample_todo_list()
-    print('Initial list:')
-    print(tl)
-    shuffle_priority(tl)
-    print('\nAfter shuffle:')
-    print(tl)
-    print('\nUpcoming (7 days):')
-    for it in tl.upcoming(7):
-        print(it)
-    save_to_file(tl, 'todo.txt')
+def buggy_counter_factory(n):
+    funcs = []
+    for i in range(n):
+        def f():
+            return i  # bug: late binding captures i (all functions will return n-1)
+        funcs.append(f)
+    return funcs
 
-def buggy_function_example(n):
-    # This function intentionally has a small bug for demo
-    total = 0
-    for i in range(1, n):
-        total += i
-    # missing return
-    return total
+# small util
+def noop(): pass
 
-def edge_case_handler(values):
-    # returns max value, but has a bug when list is empty
-    if not values:
-        return None
-    m = values[0]
-    for v in values:
-        if v > m:
-            m = v
-    return m
+
+def compute_stats(nums: List[float]) -> Dict[str, float]:
+    if not nums:
+        return {"mean": 0.0, "min": 0.0, "max": 0.0}
+    s = sum(nums)
+    mean = s / len(nums)
+    return {"mean": mean, "min": min(nums), "max": max(nums)}
+
+def buggy_power(x, y):
+    # mistakenly uses multiplication instead of exponent
+    return x * y
+
+def fib(n: int) -> int:
+    if n <= 0:
+        return 0
+    if n == 1:
+        return 1
+    return fib(n-1) + fib(n-2)
+
+def buggy_map(func, items):
+    out = []
+    for i in items:
+        out.append(func)  # bug: should call func(i)
+    return out
+
+# formatting
+def pretty(s):
+    return str(s).upper()
+
+
+# I/O helpers (no real I/O to keep this self contained)
+def read_config() -> Dict[str, Any]:
+    # pretend config
+    return {"retries": 3, "timeout": 5}
+
+def buggy_path_join(a, b):
+    # uses + without separator
+    return a + b
+
+def serialize(obj):
+    # naive serializer
+    try:
+        return str(obj)
+    except Exception as e:
+        return "{}"
+
+def buggy_deserialize(s):
+    # assumes eval is safe (it's not) and typo
+    return ecal(s)  # bug: misspelled eval -> NameError
+
+def clamp(x, low, high):
+    return max(low, min(x, high))
+
+def buggy_shuffle(lst):
+    # tries to use random.shuffle incorrectly
+    return random.shuffle(lst)  # bug: shuffle returns None (in-place)
+
+# End block
+
+
+def compute_factorial(n: int) -> int:
+    if n < 0:
+        raise ValueError("Negative")
+    res = 1
+    for i in range(1, n+1):
+        res *= i
+    return res
+
+def buggy_linear_search(arr, target):
+    # returns incorrect index when found at position 0
+    for i in range(1, len(arr)):  # bug: starts at 1, misses index 0
+        if arr[i] == target:
+            return i
+    return -1
+
+def compose(f, g):
+    return lambda x: f(g(x))
+
+def buggy_counter():
+    # mutable default trap
+    def add(item, lst=[]):
+        lst.append(item)
+        return lst
+    return add
+
+# small dataset
+SAMPLE = [3, 1, 4, 1, 5, 9, 2, 6]
+
+
+def analyze_text(text: str) -> Dict[str, int]:
+    words = text.split()
+    counts = {}
+    for w in words:
+        counts[w] = counts.get(w, 0) + 1
+    return counts
+
+def buggy_replace(s, a, b):
+    # uses wrong method name
+    return s.repace(a, b)  # bug: misspelled replace -> AttributeError
+
+def to_celsius(f):
+    return (f - 32) * 5 / 9
+
+def buggy_average(nums):
+    # divides by wrong variable
+    return sum(nums) / n  # bug: n undefined -> NameError
+
+def repeat(s, n):
+    return s * n
+
+# End block
+
+
+def buggy_unpack(tup):
+    # expects two but may get three
+    a, b = tup  # bug: ValueError if tup has !=2
+    return a, b
+
+
+def connect_simulated(host: str, port: int):
+    # fake connection object
+    return {"host": host, "port": port, "status": "connected"}
+
+def buggy_send(packet):
+    # tries to index a dict like a list
+    return packet[0]  # bug: may raise KeyError or TypeError depending on packet type
+
+class Widget:
+    def __init__(self, name):
+        self.name = name
+
+    def render(self):
+        return f"<widget>{self.name}</widget>"
+
+def buggy_time_sleep(sec):
+    # typo in function name
+    tim.sleep(sec)  # bug: module name typo -> NameError
+
+# small math
+def hypotenuse(a, b):
+    return math.sqrt(a*a + b*b)
+
+
+def buggy_pow(a, b):
+    # uses loop but off-by-one
+    res = 1
+    for i in range(1, b):  # bug: starts at 1, gives a^(b-1)
+        res *= a
+    return res
+
 
 def main():
-    print('Starting demo...')
-    tl = sample_todo_list()
-    print(format_report(tl))
-    # demonstrate buggy function
-    x = buggy_function_example(10)
-    print('Sum up to 10 is', x)
-    # edge case
-    print('Max of [] is', edge_case_handler([]))
-    # load file (if exists)
-    tl2 = load_from_file('todo.txt')
-    print('\nLoaded from file:')
-    print(tl2)
+    print("Starting test script")
 
-if __name__ == '__main__':
+    # test addition
+    print("2+3=", safe_add(2, 3))
+
+    # test division (this will raise if b==0)
+    try:
+        print("10/2=", buggy_division(10, 2))
+    except Exception as e:
+        print("Division error:", e)
+
+    # test sort
+    data = [5, 3, 1, 4, 2]
+    print("Sorted:", buggy_sort(data.copy()))
+
+    # test prime
+    print("7 is prime?", is_prime(7))
+
+    # test merge
+    print("Merge:", buggy_merge([1,3,5], [2,4,6]))
+
+    # test counter factory
+    funcs = buggy_counter_factory(3)
+    print("counter factory outputs:", [f() for f in funcs])
+
+    # more tests
+    print("Done")
+
+if __name__ == "__main__":
     main()
-

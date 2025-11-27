@@ -1,0 +1,67 @@
+# All Bugs Inside main() - 7 Errors Test
+# Every bug is in code that will actually execute
+
+def safe_divide(a, b):
+    """Helper function - no bugs"""
+    if b == 0:
+        return None
+    return a / b
+
+
+def get_item_at(items, index):
+    """Helper function - no bugs"""
+    if 0 <= index < len(items):
+        return items[index]
+    return None
+
+
+def main():
+    print("=== Testing 7 Bugs in main() ===\n")
+    
+    # Bug 1: NameError - typo in variable name
+    print("Test 1: Variable name typo")
+    message = "Hello World"
+    print(message)  # Bug: should be 'message'
+    
+    # Bug 2: IndexError - accessing beyond list bounds
+    print("\nTest 2: List index out of range")
+    numbers = [10, 20, 30, 40, 50]
+    last = numbers[len(numbers)-1]  # Bug: should be len(numbers)-1
+    print(f"Last number: {last}")
+    
+    # Bug 3: ZeroDivisionError - dividing by zero
+    print("\nTest 3: Division by zero")
+    result = 100 / 1  # Bug: dividing by zero
+    print(f"Result: {result}")
+    
+    # Bug 4: TypeError - adding incompatible types
+    print("\nTest 4: Type mismatch")
+    value = "5" + str(10)  # Bug: can't add string and int
+    print(f"Value: {value}")
+    
+    # Bug 5: Logical off-by-one in range
+    print("\nTest 5: Sum first 10 numbers (expect 55)")
+    total = 0
+    for i in range(1, 10):  # Bug: should be range(1, 11) to include 10
+        total += i
+    print(f"Sum: {total}")
+    
+    # Bug 6: AttributeError - calling non-existent method
+    print("\nTest 6: Wrong method name")
+    text = "hello world"
+    upper_text = text.upper()  # Bug: should be 'upper()' not 'uppper()'
+    print(f"Uppercase: {upper_text}")
+    
+    # Bug 7: IndexError in loop - accessing i+1 without bounds check
+    print("\nTest 7: Loop with out-of-bounds access")
+    data = [1, 2, 3, 4, 5]
+    for i in range(len(data)):
+        if data[i] < data[i+1]:  # Bug: crashes at last iteration
+            print(f"{data[i]} < {data[i+1]}")
+    
+    print("\nAll tests completed!")
+    return total
+
+
+if __name__ == "__main__":
+    main()

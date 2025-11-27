@@ -1,0 +1,520 @@
+================================================================================
+🤖 AUTONOMOUS REPAIR LOOP - FixGoblin v2.0
+================================================================================
+📁 Target: backend/tests/test_five_bugs.py
+🔄 Max Iterations: 5
+⚡ Efficiency Mode: DISABLED
+================================================================================
+
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+ITERATION 1/5
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+
+🔬 Running code in sandbox...
+   Language: python
+   Return Code: 1
+
+❌ Execution failed with errors
+
+🐛 Parsing error...
+   Type: ZeroDivisionError
+   Line: 6
+   Message: division by zero
+
+🔧 Generating patches (efficiency=False)...
+   Generated 2 patch candidate(s)
+      1. patch_1 [CORRECTNESS]: Use ternary operator with zero check for 'len(numbers)'
+      2. patch_2 [CORRECTNESS]: Wrap division in try-except block
+
+🏆 Selecting best patch...
+
+======================================================================
+PATCH OPTIMIZER: Evaluating Candidates
+======================================================================
+
+📊 Baseline (Original Code):
+   Return Code: 1
+   Errors in stderr: 2
+
+🔬 Testing Patch 1/2: patch_1
+   Description: Use ternary operator with zero check for 'len(numbers)'
+      ✗ Changed error type (ZeroDivisionError → NameError): -50
+      ✓ Minimal change (2 lines): +10
+   Score: -40 points
+   Return Code: 1
+   ❌ Still has errors
+
+🔬 Testing Patch 2/2: patch_2
+   Description: Wrap division in try-except block
+      ✗ Changed to UnboundLocalError (cascading bug): -100
+      ✗ Large diff (5 lines): -20
+   Score: -120 points
+   Return Code: 1
+   ❌ Still has errors
+
+======================================================================
+🏆 BEST PATCH SELECTED
+======================================================================
+ID: patch_1
+Description: Use ternary operator with zero check for 'len(numbers)'
+Final Score: -40 points
+
+Score Breakdown:
+   returncode: 1
+   success: False
+   no_errors_bonus: 0
+   priority_bonus: 0
+   error_reduction_bonus: 0
+   new_errors_penalty: -50
+   diff_size_penalty: 10
+   output_bonus: 0
+======================================================================
+   Selected: patch_1
+   Score: -40 points
+   Description: Use ternary operator with zero check for 'len(numbers)'
+
+💾 Applying patch to file...
+
+📦 Backup created: backend/tests/test_five_bugs.py.backup
+✅ Patch applied to: backend/tests/test_five_bugs.py
+   ✅ Applied: backend/tests/test_five_bugs.py.backup
+
+📊 Iteration 1 Status: RETRYING
+
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+ITERATION 2/5
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+
+🔬 Running code in sandbox...
+   Language: python
+   Return Code: 1
+
+❌ Execution failed with errors
+
+🐛 Parsing error...
+   Type: NameError
+   Line: 13
+   Message: name 'username' is not defined. Did you mean: 'user_name'?
+
+🔧 Generating patches (efficiency=False)...
+   Generated 3 patch candidate(s)
+      1. patch_1 [CORRECTNESS]: Replace 'username' with 'user_name' (possible typo)
+      2. patch_2 [CORRECTNESS]: Replace 'username' with 'user_age' (possible typo)
+      3. patch_3 [CORRECTNESS]: Initialize 'username' before use
+
+🏆 Selecting best patch...
+
+======================================================================
+PATCH OPTIMIZER: Evaluating Candidates
+======================================================================
+
+📊 Baseline (Original Code):
+   Return Code: 1
+   Errors in stderr: 2
+
+🔬 Testing Patch 1/3: patch_1
+   Description: Replace 'username' with 'user_name' (possible typo)
+      ✗ Changed error type (NameError → IndexError): -50
+      ✓ Minimal change (2 lines): +10
+   Score: -40 points
+   Return Code: 1
+   ❌ Still has errors
+
+🔬 Testing Patch 2/3: patch_2
+   Description: Replace 'username' with 'user_age' (possible typo)
+      ✗ Changed error type (NameError → IndexError): -50
+      ✓ Minimal change (2 lines): +10
+   Score: -40 points
+   Return Code: 1
+   ❌ Still has errors
+
+🔬 Testing Patch 3/3: patch_3
+   Description: Initialize 'username' before use
+      ✗ Changed error type (NameError → IndexError): -50
+      ✓ Minimal change (1 lines): +10
+   Score: -40 points
+   Return Code: 1
+   ❌ Still has errors
+
+======================================================================
+🏆 BEST PATCH SELECTED
+======================================================================
+ID: patch_1
+Description: Replace 'username' with 'user_name' (possible typo)
+Final Score: -40 points
+
+Score Breakdown:
+   returncode: 1
+   success: False
+   no_errors_bonus: 0
+   priority_bonus: 0
+   error_reduction_bonus: 0
+   new_errors_penalty: -50
+   diff_size_penalty: 10
+   output_bonus: 0
+======================================================================
+   Selected: patch_1
+   Score: -40 points
+   Description: Replace 'username' with 'user_name' (possible typo)
+
+💾 Applying patch to file...
+
+📦 Backup created: backend/tests/test_five_bugs.py.backup
+✅ Patch applied to: backend/tests/test_five_bugs.py
+   ✅ Applied: backend/tests/test_five_bugs.py.backup
+
+📊 Iteration 2 Status: RETRYING
+
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+ITERATION 3/5
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+
+🔬 Running code in sandbox...
+   Language: python
+   Return Code: 1
+
+❌ Execution failed with errors
+
+🐛 Parsing error...
+   Type: IndexError
+   Line: 18
+   Message: list index out of range
+
+🔧 Generating patches (efficiency=False)...
+   Generated 1 patch candidate(s)
+      1. patch_0 [CORRECTNESS]: Fix index: use len(array)-1 instead of len(array)
+
+🏆 Selecting best patch...
+
+======================================================================
+PATCH OPTIMIZER: Evaluating Candidates
+======================================================================
+
+📊 Baseline (Original Code):
+   Return Code: 1
+   Errors in stderr: 2
+
+🔬 Testing Patch 1/1: patch_0
+   Description: Fix index: use len(array)-1 instead of len(array)
+      ✓ Priority patch (patch_0): +30
+      ✗ Changed error type (IndexError → TypeError): -50
+      ✓ Minimal change (2 lines): +10
+   Score: -10 points
+   Return Code: 1
+   ❌ Still has errors
+
+======================================================================
+🏆 BEST PATCH SELECTED
+======================================================================
+ID: patch_0
+Description: Fix index: use len(array)-1 instead of len(array)
+Final Score: -10 points
+
+Score Breakdown:
+   returncode: 1
+   success: False
+   no_errors_bonus: 0
+   priority_bonus: 30
+   error_reduction_bonus: 0
+   new_errors_penalty: -50
+   diff_size_penalty: 10
+   output_bonus: 0
+======================================================================
+   Selected: patch_0
+   Score: -10 points
+   Description: Fix index: use len(array)-1 instead of len(array)
+
+💾 Applying patch to file...
+
+📦 Backup created: backend/tests/test_five_bugs.py.backup
+✅ Patch applied to: backend/tests/test_five_bugs.py
+   ✅ Applied: backend/tests/test_five_bugs.py.backup
+
+📊 Iteration 3 Status: RETRYING
+
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+ITERATION 4/5
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+
+🔬 Running code in sandbox...
+   Language: python
+   Return Code: 1
+
+❌ Execution failed with errors
+
+🐛 Parsing error...
+   Type: TypeError
+   Line: 23
+   Message: can only concatenate str (not "int") to str
+
+🔧 Generating patches (efficiency=False)...
+   Generated 1 patch candidate(s)
+      1. patch_1 [CORRECTNESS]: Convert variable to string for concatenation
+
+🏆 Selecting best patch...
+
+======================================================================
+PATCH OPTIMIZER: Evaluating Candidates
+======================================================================
+
+📊 Baseline (Original Code):
+   Return Code: 1
+   Errors in stderr: 2
+
+🔬 Testing Patch 1/1: patch_1
+   Description: Convert variable to string for concatenation
+      ✗ Changed error type (TypeError → AttributeError): -50
+      ✓ Minimal change (2 lines): +10
+   Score: -40 points
+   Return Code: 1
+   ❌ Still has errors
+
+======================================================================
+🏆 BEST PATCH SELECTED
+======================================================================
+ID: patch_1
+Description: Convert variable to string for concatenation
+Final Score: -40 points
+
+Score Breakdown:
+   returncode: 1
+   success: False
+   no_errors_bonus: 0
+   priority_bonus: 0
+   error_reduction_bonus: 0
+   new_errors_penalty: -50
+   diff_size_penalty: 10
+   output_bonus: 0
+======================================================================
+   Selected: patch_1
+   Score: -40 points
+   Description: Convert variable to string for concatenation
+
+💾 Applying patch to file...
+
+📦 Backup created: backend/tests/test_five_bugs.py.backup
+✅ Patch applied to: backend/tests/test_five_bugs.py
+   ✅ Applied: backend/tests/test_five_bugs.py.backup
+
+📊 Iteration 4 Status: RETRYING
+
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+ITERATION 5/5
+▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶▶
+
+🔬 Running code in sandbox...
+   Language: python
+   Return Code: 1
+
+❌ Execution failed with errors
+
+🐛 Parsing error...
+   Type: AttributeError
+   Line: 28
+   Message: 'str' object has no attribute 'lowar'. Did you mean: 'lower'?
+
+🔧 Generating patches (efficiency=False)...
+   Generated 2 patch candidate(s)
+      1. patch_0 [CORRECTNESS]: Fix typo: replace 'lowar' with 'lower'
+      2. patch_1 [CORRECTNESS]: Add check for 'lowar' attribute existence
+
+🏆 Selecting best patch...
+
+======================================================================
+PATCH OPTIMIZER: Evaluating Candidates
+======================================================================
+
+📊 Baseline (Original Code):
+   Return Code: 1
+   Errors in stderr: 2
+
+🔬 Testing Patch 1/2: patch_0
+   Description: Fix typo: replace 'lowar' with 'lower'
+      ✓ No errors (returncode 0): +100
+      ✓ Priority patch (patch_0): +30
+      ✓ Reduced 2 errors: +40
+      ✓ Minimal change (2 lines): +10
+   Score: 180 points
+   Return Code: 0
+   ✅ PATCH WORKS!
+
+🔬 Testing Patch 2/2: patch_1
+   Description: Add check for 'lowar' attribute existence
+      ✗ Changed to UnboundLocalError (cascading bug): -100
+   Score: -100 points
+   Return Code: 1
+   ❌ Still has errors
+
+======================================================================
+🏆 BEST PATCH SELECTED
+======================================================================
+ID: patch_0
+Description: Fix typo: replace 'lowar' with 'lower'
+Final Score: 180 points
+
+Score Breakdown:
+   returncode: 0
+   success: True
+   no_errors_bonus: 100
+   priority_bonus: 30
+   error_reduction_bonus: 40
+   new_errors_penalty: 0
+   diff_size_penalty: 10
+   output_bonus: 0
+======================================================================
+   Selected: patch_0
+   Score: 180 points
+   Description: Fix typo: replace 'lowar' with 'lower'
+
+💾 Applying patch to file...
+
+📦 Backup created: backend/tests/test_five_bugs.py.backup
+✅ Patch applied to: backend/tests/test_five_bugs.py
+   ✅ Applied: backend/tests/test_five_bugs.py.backup
+
+📊 Iteration 5 Status: FIXED
+
+⚠️ MAX ITERATIONS REACHED (5)
+
+================================================================================
+📋 REPAIR SUMMARY
+================================================================================
+
+🎯 Final Status: MAX_ITERATIONS_REACHED
+✅ Success: False
+🔄 Total Iterations: 5
+📝 Reason: Reached maximum iterations (5) without fixing all errors
+
+📊 ITERATION HISTORY:
+--------------------------------------------------------------------------------
+
+🔄 Iteration 1:
+   Error: ZeroDivisionError (Line 6)
+   Message: division by zero
+   Patch: patch_1
+   Action: Use ternary operator with zero check for 'len(numbers)'
+   Score: -40 points
+   Status: RETRYING
+
+🔄 Iteration 2:
+   Error: NameError (Line 13)
+   Message: name 'username' is not defined. Did you mean: 'user_name'?
+   Patch: patch_1
+   Action: Replace 'username' with 'user_name' (possible typo)
+   Score: -40 points
+   Status: RETRYING
+
+🔄 Iteration 3:
+   Error: IndexError (Line 18)
+   Message: list index out of range
+   Patch: patch_0
+   Action: Fix index: use len(array)-1 instead of len(array)
+   Score: -10 points
+   Status: RETRYING
+
+🔄 Iteration 4:
+   Error: TypeError (Line 23)
+   Message: can only concatenate str (not "int") to str
+   Patch: patch_1
+   Action: Convert variable to string for concatenation
+   Score: -40 points
+   Status: RETRYING
+
+✅ Iteration 5:
+   Error: AttributeError (Line 28)
+   Message: 'str' object has no attribute 'lowar'. Did you mean: 'lower'?
+   Patch: patch_0
+   Action: Fix typo: replace 'lowar' with 'lower'
+   Score: 180 points
+   Status: FIXED
+
+================================================================================
+
+================================================================================
+🔍 FINAL DEBUGGING REPORT
+================================================================================
+
+📁 File: backend/tests/test_five_bugs.py
+⏱️  Execution Time: 1764259075.62s
+🔄 Total Iterations: 5
+📅 Generated: 2025-11-27T21:27:55.623114
+
+❌ Status: Failed
+   Success: False
+   Final Status: max_iterations_reached
+
+🐛 Detected Error Types (5):
+   • AttributeError
+   • IndexError
+   • NameError
+   • TypeError
+   • ZeroDivisionError
+
+🔧 Applied Patches (5):
+
+   Iteration 1:
+      ID: patch_1
+      Description: Use ternary operator with zero check for 'len(numbers)'
+      Score: -40 points
+      Error Type: ZeroDivisionError
+      Line: 6
+
+   Iteration 2:
+      ID: patch_1
+      Description: Replace 'username' with 'user_name' (possible typo)
+      Score: -40 points
+      Error Type: NameError
+      Line: 13
+
+   Iteration 3:
+      ID: patch_0
+      Description: Fix index: use len(array)-1 instead of len(array)
+      Score: -10 points
+      Error Type: IndexError
+      Line: 18
+
+   Iteration 4:
+      ID: patch_1
+      Description: Convert variable to string for concatenation
+      Score: -40 points
+      Error Type: TypeError
+      Line: 23
+
+   Iteration 5:
+      ID: patch_0
+      Description: Fix typo: replace 'lowar' with 'lower'
+      Score: 180 points
+      Error Type: AttributeError
+      Line: 28
+
+📄 Code Changes:
+   Original Lines: 61
+   Final Lines: 61
+   Lines Changed: 10
+
+📊 Code Diff (Preview):
+   --- original
+   +++ patched
+   [94m@@ -3,29 +3,29 @@[0m
+    def calculate_average(numbers):
+        """Bug 1: ZeroDivisionError"""
+        total = sum(numbers)
+   [91m-    avg = total / len(numbers)[0m
+   [92m+    avg = total / len(numbers) if len(numbers) != 0 else 0[0m
+        return avg
+   
+    def get_user_info():
+        """Bug 2: NameError"""
+        user_name = "Alice"
+        user_age = 25
+   [91m-    return f"{username} is {user_age} years old"[0m
+   [92m+    return f"{user_name} is {user_age} years old"[0m
+   
+    def process_list(items):
+        """Bug 3: IndexError"""
+        first = items[0]
+   ... (17 more lines)
+
+================================================================================
+
+📄 Full report saved to: /Users/aditya/Documents/FixGoblin/backend/logs/test_five_bugs_final_report.json

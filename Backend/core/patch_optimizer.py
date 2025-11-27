@@ -147,20 +147,27 @@ def _evaluate_patch(
         "returncode": patched_result['returncode'],
         "success": patched_result['returncode'] == 0,
         "no_errors_bonus": 0,
+        "priority_bonus": 0,
         "error_reduction_bonus": 0,
         "new_errors_penalty": 0,
         "diff_size_penalty": 0,
+        "output_bonus": 0,
         "total_score": 0
     }
     
-    # SCORING CRITERIA (Updated scoring system)
+    # SCORING CRITERIA (Improved scoring system for consistency)
     
     # 1. No errors after patch (HIGHEST PRIORITY: +100 points)
     if patched_result['returncode'] == 0:
         score_info["no_errors_bonus"] = 100
         print(f"      ✓ No errors (returncode 0): +100")
     
-    # 2. Error reduction (compare error counts: +20 per error reduced)
+    # 2. Patch ID priority bonus (prefer patch_0 which is usually the best/simplest fix)
+    if patch['id'] == 'patch_0':
+        score_info["priority_bonus"] = 30
+        print(f"      ✓ Priority patch (patch_0): +30")
+    
+    # 3. Error reduction (compare error counts: +20 per error reduced)
     baseline_errors = _count_error_lines(baseline_result['stderr'])
     patched_errors = _count_error_lines(patched_result['stderr'])
     
@@ -173,16 +180,21 @@ def _evaluate_patch(
         score_info["new_errors_penalty"] = -increase * 50
         print(f"      ✗ Introduced {increase} new errors: -{increase * 50}")
     
-    # 3. Check for new error types (severe penalty)
+    # 4. Check for new error types (SEVERE penalty - these cascade into more bugs)
     baseline_error_type = _extract_error_type(baseline_result['stderr'])
     patched_error_type = _extract_error_type(patched_result['stderr'])
     
     if (patched_error_type and baseline_error_type and 
         patched_error_type != baseline_error_type):
-        score_info["new_errors_penalty"] -= 50
-        print(f"      ✗ Changed error type ({baseline_error_type} → {patched_error_type}): -50")
+        # UnboundLocalError and SyntaxError are especially bad (chain reaction bugs)
+        if patched_error_type in ['UnboundLocalError', 'SyntaxError']:
+            score_info["new_errors_penalty"] -= 100
+            print(f"      ✗ Changed to {patched_error_type} (cascading bug): -100")
+        else:
+            score_info["new_errors_penalty"] -= 50
+            print(f"      ✗ Changed error type ({baseline_error_type} → {patched_error_type}): -50")
     
-    # 4. Diff size penalty (prefer minimal changes: -10 per extra line after 3)
+    # 5. Diff size penalty (prefer minimal changes: -10 per extra line after 3)
     lines_changed = _count_diff_lines(patch['diff'])
     if lines_changed > 3:
         penalty = (lines_changed - 3) * 10
@@ -193,7 +205,7 @@ def _evaluate_patch(
         score_info["diff_size_penalty"] = bonus
         print(f"      ✓ Minimal change ({lines_changed} lines): +{bonus}")
     
-    # 5. Bonus for stdout output (code ran far enough to produce output)
+    # 6. Bonus for stdout output (code ran far enough to produce output)
     if patched_result['stdout'] and not baseline_result['stdout']:
         score_info["output_bonus"] = 15
         print(f"      ✓ Generated output: +15")
@@ -201,6 +213,7 @@ def _evaluate_patch(
     # Calculate total score
     score_info["total_score"] = sum([
         score_info["no_errors_bonus"],
+        score_info.get("priority_bonus", 0),
         score_info["error_reduction_bonus"],
         score_info["new_errors_penalty"],
         score_info["diff_size_penalty"],

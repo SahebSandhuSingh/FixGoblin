@@ -49,6 +49,8 @@ def generate_patch_candidates(error_data: Dict[str, Any], user_code: str, optimi
         correctness_patches = _generate_type_error_patches(error_data, user_code)
     elif error_type == "AttributeError":
         correctness_patches = _generate_attribute_error_patches(error_data, user_code)
+    elif error_type == "UnboundLocalError":
+        correctness_patches = _generate_unbound_local_patches(error_data, user_code)
     elif error_type == "LogicalError":
         correctness_patches = _generate_logical_error_patches(error_data, user_code)
     
@@ -76,6 +78,16 @@ def _generate_index_error_patches(error_data: Dict[str, Any], user_code: str) ->
     lines = user_code.splitlines(keepends=True)
     line_number = error_data["line_number"]
     faulty_snippet = error_data["faulty_snippet"]
+    
+    # Patch 0: Fix len(array) → len(array)-1 (most common pattern)
+    patch0 = _fix_len_array_pattern(lines, line_number, faulty_snippet)
+    if patch0:
+        patches.append({
+            "id": "patch_0",
+            "description": "Fix index: use len(array)-1 instead of len(array)",
+            "patched_code": patch0,
+            "diff": _generate_diff(user_code, patch0)
+        })
     
     # Patch 1: Add boundary check before access
     patch1 = _add_index_boundary_check(lines, line_number, faulty_snippet)
@@ -110,6 +122,31 @@ def _generate_index_error_patches(error_data: Dict[str, Any], user_code: str) ->
     return patches
 
 
+def _fix_len_array_pattern(lines: List[str], line_num: int, faulty_snippet: str) -> str:
+    """Detect and fix pattern like array[len(array)] → array[len(array)-1]."""
+    if line_num < 1 or line_num > len(lines):
+        return None
+    
+    idx = line_num - 1
+    original_line = lines[idx]
+    
+    # Match pattern: array_name[len(array_name)]
+    match = re.search(r'(\w+)\[len\(\1\)\]', original_line)
+    if match:
+        array_name = match.group(1)
+        # Replace with len(array)-1
+        new_line = re.sub(
+            rf'{array_name}\[len\({array_name}\)\]',
+            f'{array_name}[len({array_name})-1]',
+            original_line
+        )
+        new_lines = lines.copy()
+        new_lines[idx] = new_line
+        return "".join(new_lines)
+    
+    return None
+
+
 def _add_index_boundary_check(lines: List[str], line_num: int, faulty_snippet: str) -> str:
     """Add if statement to check array bounds."""
     if line_num < 1 or line_num > len(lines):
@@ -127,6 +164,10 @@ def _add_index_boundary_check(lines: List[str], line_num: int, faulty_snippet: s
     
     array_name = match.group(1)
     index_expr = match.group(2)
+    
+    # Avoid impossible conditions like len(x) < len(x)
+    if f'len({array_name})' in index_expr:
+        return None
     
     # Create boundary check
     check_line = f"{indent_str}if {index_expr} < len({array_name}):\n"
@@ -199,12 +240,36 @@ def _generate_syntax_error_patches(error_data: Dict[str, Any], user_code: str) -
     patches = []
     lines = user_code.splitlines(keepends=True)
     line_number = error_data["line_number"]
+    error_message = error_data.get("error_message", "")
     
     if line_number < 1 or line_number > len(lines):
         return patches
     
     idx = line_number - 1
     original_line = lines[idx]
+    
+    # Patch 0: Handle unclosed brackets/parentheses/braces
+    if "was never closed" in error_message or "was not closed" in error_message:
+        # Extract which bracket was not closed
+        bracket_match = re.search(r"'([\\[({])' was (never|not) closed", error_message)
+        if bracket_match:
+            open_bracket = bracket_match.group(1)
+            close_bracket = {'[': ']', '(': ')', '{': '}'}[open_bracket]
+            
+            # Check if the line ends without proper closing
+            stripped_line = original_line.rstrip()
+            if not stripped_line.endswith(close_bracket):
+                # Add closing bracket at end of line
+                new_line = stripped_line + close_bracket + '\n'
+                new_lines = lines.copy()
+                new_lines[idx] = new_line
+                patched = "".join(new_lines)
+                patches.append({
+                    "id": "patch_0",
+                    "description": f"Add missing closing bracket '{close_bracket}'",
+                    "patched_code": patched,
+                    "diff": _generate_diff(user_code, patched)
+                })
     
     # Patch 1: Fix = to ==
     if " = " in original_line and ("if " in original_line or "while " in original_line or "elif " in original_line):
@@ -265,6 +330,27 @@ def _generate_syntax_error_patches(error_data: Dict[str, Any], user_code: str) -
                 "patched_code": patched,
                 "diff": _generate_diff(user_code, patched)
             })
+    
+    # Patch 5: Fix empty block (add 'pass' statement)
+    if "expected an indented block" in error_message.lower():
+        # Find the line with the colon that needs a body
+        block_line_num = line_number - 1  # Error is usually reported on next line
+        if block_line_num >= 1 and block_line_num <= len(lines):
+            block_idx = block_line_num - 1
+            block_line = lines[block_idx]
+            if block_line.rstrip().endswith(':'):
+                indent = len(block_line) - len(block_line.lstrip())
+                indent_str = " " * (indent + 4)  # Add 4 spaces for block body
+                
+                new_lines = lines.copy()
+                new_lines.insert(block_idx + 1, f"{indent_str}pass\n")
+                patched = "".join(new_lines)
+                patches.append({
+                    "id": "patch_5",
+                    "description": "Add 'pass' statement to empty block",
+                    "patched_code": patched,
+                    "diff": _generate_diff(user_code, patched)
+                })
     
     return patches
 
@@ -390,21 +476,40 @@ def _generate_zero_division_patches(error_data: Dict[str, Any], user_code: str) 
     
     divisor = division_match.group(2)
     
-    # Patch 1: Add zero check with if statement
-    check_line = f"{indent_str}if {divisor} != 0:\n"
-    indented_original = indent_str + "    " + original_line.lstrip()
-    else_line = f"{indent_str}else:\n"
-    else_body = f"{indent_str}    pass  # Handle division by zero\n"
+    # Patch 0: If divisor is literal 0, replace with 1
+    if divisor.strip() == '0':
+        new_line = original_line.replace('/ 0', '/ 1')
+        if new_line != original_line:
+            new_lines = lines.copy()
+            new_lines[idx] = new_line
+            patched = "".join(new_lines)
+            patches.append({
+                "id": "patch_0",
+                "description": "Replace division by zero with division by 1",
+                "patched_code": patched,
+                "diff": _generate_diff(user_code, patched)
+            })
     
-    new_lines = lines.copy()
-    new_lines[idx] = check_line + indented_original + else_line + else_body
-    patched = "".join(new_lines)
-    patches.append({
-        "id": "patch_1",
-        "description": f"Add check to ensure '{divisor}' is not zero before division",
-        "patched_code": patched,
-        "diff": _generate_diff(user_code, patched)
-    })
+    # Patch 1: Use ternary operator to avoid unbound variables (preferred)
+    if divisor.strip() != '0':  # Skip if literal zero
+        # Extract variable being assigned (e.g., "result = " from "result = 10 / x")
+        assignment_match = re.search(r'^\s*(\w+)\s*=', original_line)
+        if assignment_match:
+            var_name = assignment_match.group(1)
+            # Extract the division expression
+            div_expr = original_line.split('=', 1)[1].strip().rstrip('\n')
+            # Create ternary expression
+            new_line = f"{indent_str}{var_name} = {div_expr} if {divisor} != 0 else 0\n"
+            
+            new_lines = lines.copy()
+            new_lines[idx] = new_line
+            patched = "".join(new_lines)
+            patches.append({
+                "id": "patch_1",
+                "description": f"Use ternary operator with zero check for '{divisor}'",
+                "patched_code": patched,
+                "diff": _generate_diff(user_code, patched)
+            })
     
     # Patch 2: Use try-except
     try_line = f"{indent_str}try:\n"
@@ -484,7 +589,24 @@ def _generate_attribute_error_patches(error_data: Dict[str, Any], user_code: str
     idx = line_number - 1
     original_line = lines[idx]
     
-    # Patch: Add hasattr check
+    # Patch 0: Fix typo if "Did you mean" suggestion exists
+    did_you_mean = re.search(r"Did you mean[:\s]+'(\w+)'", error_message)
+    if did_you_mean:
+        correct_name = did_you_mean.group(1)
+        # Replace the typo with the correct name
+        new_line = original_line.replace(f'.{attr_name}', f'.{correct_name}')
+        if new_line != original_line:
+            new_lines = lines.copy()
+            new_lines[idx] = new_line
+            patched = "".join(new_lines)
+            patches.append({
+                "id": "patch_0",
+                "description": f"Fix typo: replace '{attr_name}' with '{correct_name}'",
+                "patched_code": patched,
+                "diff": _generate_diff(user_code, patched)
+            })
+    
+    # Patch 1: Add hasattr check
     indent = len(original_line) - len(original_line.lstrip())
     indent_str = " " * indent
     
@@ -641,6 +763,89 @@ def _add_early_exit_optimization(lines: List[str], error_data: Dict[str, Any]) -
 # ============================================================
 #  UTILITY FUNCTIONS
 # ============================================================
+
+def _generate_unbound_local_patches(error_data: Dict[str, Any], user_code: str) -> List[Dict[str, Any]]:
+    """Generate patches for UnboundLocalError (variable used before assignment)."""
+    patches = []
+    lines = user_code.splitlines(keepends=True)
+    line_number = error_data["line_number"]
+    error_message = error_data["error_message"]
+    
+    # Extract variable name from error message
+    # Pattern: "cannot access local variable 'var_name' where it is not associated with a value"
+    match = re.search(r"variable '(\w+)'", error_message)
+    if not match:
+        return patches
+    
+    var_name = match.group(1)
+    
+    # Patch 1: Initialize variable at the beginning of the function
+    if line_number > 1:
+        idx = line_number - 1
+        original_line = lines[idx]
+        indent = len(original_line) - len(original_line.lstrip())
+        indent_str = " " * indent
+        
+        # Find the function definition to initialize at the start
+        init_idx = None
+        for i in range(idx - 1, max(0, idx - 20), -1):
+            line = lines[i].strip()
+            if line.startswith("def "):
+                # Found function def, initialize right after it
+                init_idx = i + 1
+                # Skip docstrings if present
+                if init_idx < len(lines) and '"""' in lines[init_idx]:
+                    # Find end of docstring
+                    for j in range(init_idx + 1, len(lines)):
+                        if '"""' in lines[j]:
+                            init_idx = j + 1
+                            break
+                break
+        
+        if init_idx is not None:
+            new_lines = lines.copy()
+            new_lines.insert(init_idx, f"{indent_str}{var_name} = None\n")
+            patched = "".join(new_lines)
+            patches.append({
+                "id": "patch_1",
+                "description": f"Initialize '{var_name}' to None at function start",
+                "patched_code": patched,
+                "diff": _generate_diff(user_code, patched)
+        })
+    
+    # Patch 2: Remove the conditional that prevents assignment
+    # Look backwards for if statement that might be blocking the assignment
+    if line_number > 2:
+        for i in range(line_number - 2, max(0, line_number - 10), -1):
+            if "if " in lines[i] and var_name in lines[i+1]:
+                # Found potential blocking if statement
+                new_lines = lines.copy()
+                # Remove the if statement and unindent the body
+                if_indent = len(lines[i]) - len(lines[i].lstrip())
+                body_indent = len(lines[i+1]) - len(lines[i+1].lstrip())
+                indent_diff = body_indent - if_indent
+                
+                # Unindent lines in the if block
+                j = i + 1
+                while j < len(lines) and (len(lines[j]) - len(lines[j].lstrip())) >= body_indent:
+                    if lines[j].strip():  # Don't modify empty lines
+                        new_lines[j] = lines[j][indent_diff:]
+                    j += 1
+                
+                # Remove the if line
+                del new_lines[i]
+                
+                patched = "".join(new_lines)
+                patches.append({
+                    "id": "patch_2",
+                    "description": f"Remove conditional that prevents '{var_name}' initialization",
+                    "patched_code": patched,
+                    "diff": _generate_diff(user_code, patched)
+                })
+                break
+    
+    return patches
+
 
 def _generate_diff(original: str, patched: str) -> str:
     """Generate unified diff between original and patched code."""
