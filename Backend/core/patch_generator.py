@@ -7,7 +7,18 @@ Does NOT rank patches - only generates possible fixes.
 
 import re
 import difflib
+import sys
+import os
 from typing import Dict, List, Any, Optional
+
+# Import syntax_fixer module for compile()-based syntax detection
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+try:
+    from syntax_fixer import analyze_syntax, generate_syntax_patches
+    SYNTAX_FIXER_AVAILABLE = True
+except ImportError:
+    SYNTAX_FIXER_AVAILABLE = False
+    print("Warning: syntax_fixer.py not available, using fallback syntax patches")
 
 
 def generate_patch_candidates(error_data: Dict[str, Any], user_code: str, optimize_efficiency: bool = False) -> List[Dict[str, Any]]:
@@ -236,8 +247,48 @@ def _remove_index_offset(lines: List[str], line_num: int, faulty_snippet: str) -
 # ============================================================
 
 def _generate_syntax_error_patches(error_data: Dict[str, Any], user_code: str) -> List[Dict[str, Any]]:
-    """Generate patches for SyntaxError."""
+    """
+    Generate patches for SyntaxError using compile()-based detection.
+    
+    Uses the dedicated syntax_fixer.py module which provides:
+    - Comprehensive syntax analysis via compile()
+    - Rule-based deterministic patches
+    - NO iterative error discovery
+    - NO ML/training loops
+    """
     patches = []
+    
+    # ============================================================
+    # USE SYNTAX_FIXER MODULE (compile()-based analysis)
+    # ============================================================
+    if SYNTAX_FIXER_AVAILABLE:
+        # Use syntax_fixer for comprehensive compile()-based detection
+        analysis = analyze_syntax(user_code)
+        
+        if not analysis.get("ok", True):
+            # Generate patches using syntax_fixer
+            syntax_patches = generate_syntax_patches(
+                user_code,
+                analysis,
+                allow_auto_fix=True,
+                max_candidates=3
+            )
+            
+            # Convert syntax_fixer patch format to our format
+            for idx, sp in enumerate(syntax_patches):
+                patches.append({
+                    "id": f"syntax_patch_{idx}",
+                    "description": sp["description"],
+                    "patched_code": sp["patched_code"],
+                    "diff": sp["diff"]
+                })
+            
+            # Return immediately - syntax_fixer handles all cases
+            return patches
+    
+    # ============================================================
+    # FALLBACK: Basic rule-based patches (if syntax_fixer unavailable)
+    # ============================================================
     lines = user_code.splitlines(keepends=True)
     line_number = error_data["line_number"]
     error_message = error_data.get("error_message", "")
@@ -248,28 +299,7 @@ def _generate_syntax_error_patches(error_data: Dict[str, Any], user_code: str) -
     idx = line_number - 1
     original_line = lines[idx]
     
-    # Patch 0: Handle unclosed brackets/parentheses/braces
-    if "was never closed" in error_message or "was not closed" in error_message:
-        # Extract which bracket was not closed
-        bracket_match = re.search(r"'([\\[({])' was (never|not) closed", error_message)
-        if bracket_match:
-            open_bracket = bracket_match.group(1)
-            close_bracket = {'[': ']', '(': ')', '{': '}'}[open_bracket]
-            
-            # Check if the line ends without proper closing
-            stripped_line = original_line.rstrip()
-            if not stripped_line.endswith(close_bracket):
-                # Add closing bracket at end of line
-                new_line = stripped_line + close_bracket + '\n'
-                new_lines = lines.copy()
-                new_lines[idx] = new_line
-                patched = "".join(new_lines)
-                patches.append({
-                    "id": "patch_0",
-                    "description": f"Add missing closing bracket '{close_bracket}'",
-                    "patched_code": patched,
-                    "diff": _generate_diff(user_code, patched)
-                })
+    # Basic fallback patches (much simpler than before)
     
     # Patch 1: Fix = to ==
     if " = " in original_line and ("if " in original_line or "while " in original_line or "elif " in original_line):
@@ -300,57 +330,6 @@ def _generate_syntax_error_patches(error_data: Dict[str, Any], user_code: str) -
                 "patched_code": patched,
                 "diff": _generate_diff(user_code, patched)
             })
-    
-    # Patch 3: Fix missing parentheses in print (Python 3)
-    if "print " in original_line and "print(" not in original_line:
-        new_line = re.sub(r'print\s+(.+)', r'print(\1)', original_line)
-        if new_line != original_line:
-            new_lines = lines.copy()
-            new_lines[idx] = new_line
-            patched = "".join(new_lines)
-            patches.append({
-                "id": "patch_3",
-                "description": "Add parentheses to print statement (Python 3 syntax)",
-                "patched_code": patched,
-                "diff": _generate_diff(user_code, patched)
-            })
-    
-    # Patch 4: Fix missing quotes
-    if re.search(r'=\s*[a-zA-Z_]\w*\s*$', original_line.strip()):
-        match = re.search(r'=\s*([a-zA-Z_]\w*)\s*$', original_line)
-        if match:
-            value = match.group(1)
-            new_line = original_line.replace(f'= {value}', f'= "{value}"')
-            new_lines = lines.copy()
-            new_lines[idx] = new_line
-            patched = "".join(new_lines)
-            patches.append({
-                "id": "patch_4",
-                "description": "Add quotes around string literal",
-                "patched_code": patched,
-                "diff": _generate_diff(user_code, patched)
-            })
-    
-    # Patch 5: Fix empty block (add 'pass' statement)
-    if "expected an indented block" in error_message.lower():
-        # Find the line with the colon that needs a body
-        block_line_num = line_number - 1  # Error is usually reported on next line
-        if block_line_num >= 1 and block_line_num <= len(lines):
-            block_idx = block_line_num - 1
-            block_line = lines[block_idx]
-            if block_line.rstrip().endswith(':'):
-                indent = len(block_line) - len(block_line.lstrip())
-                indent_str = " " * (indent + 4)  # Add 4 spaces for block body
-                
-                new_lines = lines.copy()
-                new_lines.insert(block_idx + 1, f"{indent_str}pass\n")
-                patched = "".join(new_lines)
-                patches.append({
-                    "id": "patch_5",
-                    "description": "Add 'pass' statement to empty block",
-                    "patched_code": patched,
-                    "diff": _generate_diff(user_code, patched)
-                })
     
     return patches
 
