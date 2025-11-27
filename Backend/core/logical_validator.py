@@ -81,22 +81,37 @@ def _detect_suspicious_none_outputs(stdout: str, source_code: str) -> List[Dict[
             })
     
     # Pattern 2: Detect mismatch between expected and actual output
-    # Example: "Sum of first 10 (expect 55): 45"
-    pattern2 = r'\(expect\s+(\d+)\)[:\s]+(\d+)'
-    matches2 = re.finditer(pattern2, stdout)
+    # Multiple patterns to catch various formats
+    mismatch_patterns = [
+        # Pattern: (expect 55): 45
+        (r'\(expect\s+\$?(\d+(?:\.\d+)?)\)[:\s]+\$?(\d+(?:\.\d+)?)', 1, 2),
+        # Pattern: Expected: $80, Got: $2100 or Expected: 80, Got: 2100
+        (r'Expected[:\s]+\$?(\d+(?:\.\d+)?)[,\s]+Got[:\s]+\$?(\d+(?:\.\d+)?)', 1, 2),
+        # Pattern: Expected max: 9, Got: 1
+        (r'Expected\s+\w+[:\s]+(\d+(?:\.\d+)?)[,\s]+Got[:\s]+(\d+(?:\.\d+)?)', 1, 2),
+        # Pattern: expect 55, actual 45
+        (r'expect[:\s]+(\d+(?:\.\d+)?)[,\s]+actual[:\s]+(\d+(?:\.\d+)?)', 1, 2),
+        # Pattern: should be 55 but is 45
+        (r'should\s+be\s+(\d+(?:\.\d+)?)\s+but\s+(?:is|got)\s+(\d+(?:\.\d+)?)', 1, 2),
+    ]
     
-    for match in matches2:
-        expected = int(match.group(1))
-        actual = int(match.group(2))
-        if expected != actual:
-            issues.append({
-                'type': 'output_mismatch',
-                'message': f"Expected output {expected} but got {actual} - possible logic error",
-                'context': match.group(0),
-                'line_number': None,
-                'expected': expected,
-                'actual': actual
-            })
+    for pattern, exp_group, act_group in mismatch_patterns:
+        matches = re.finditer(pattern, stdout, re.IGNORECASE)
+        for match in matches:
+            try:
+                expected = float(match.group(exp_group))
+                actual = float(match.group(act_group))
+                if expected != actual:
+                    issues.append({
+                        'type': 'output_mismatch',
+                        'message': f"Expected output {expected} but got {actual} - possible logic error",
+                        'context': match.group(0),
+                        'line_number': None,
+                        'expected': expected,
+                        'actual': actual
+                    })
+            except (ValueError, IndexError):
+                continue
     
     # Pattern 3: Detect "Exception" or "Error" in output (even if code didn't crash)
     if re.search(r'(?:Exception|Error)(?!:)', stdout):
@@ -116,6 +131,8 @@ def _detect_missing_returns(source_code: str) -> List[Dict[str, Any]]:
     - Calculate/accumulate values in local variables
     - Don't return anything (implicit return None)
     - Have off-by-one errors in loops
+    - Have suspicious comparison operators in loops
+    - Have wrong arithmetic operators
     """
     issues = []
     
@@ -165,6 +182,81 @@ def _detect_missing_returns(source_code: str) -> List[Dict[str, Any]]:
                     'accumulator_var': accumulator_var
                 })
             
+            # NEW: Check for suspicious operators in function calculations
+            func_name_lower = node.name.lower()
+            
+            # Detect wrong arithmetic operators
+            if 'discount' in func_name_lower or 'price' in func_name_lower or 'cost' in func_name_lower:
+                for n in ast.walk(node):
+                    # Check for adding discount instead of subtracting
+                    if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
+                        # Look for patterns like: price + discount or total + discount
+                        if isinstance(n.left, ast.Name) and isinstance(n.right, ast.Name):
+                            left_name = n.left.id.lower()
+                            right_name = n.right.id.lower()
+                            if (('price' in left_name or 'total' in left_name or 'original' in left_name) and 
+                                'discount' in right_name):
+                                issues.append({
+                                    'type': 'wrong_operator',
+                                    'message': f"Function '{node.name}' adds discount to price (line {n.lineno}) - should subtract",
+                                    'function_name': node.name,
+                                    'line_number': n.lineno,
+                                    'operator': 'add',
+                                    'expected_operator': 'subtract'
+                                })
+                    
+                    # Check for multiplying by percentage without dividing by 100
+                    if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Mult):
+                        if isinstance(n.left, ast.Name) and isinstance(n.right, ast.Name):
+                            right_name = n.right.id.lower()
+                            if 'percent' in right_name or 'rate' in right_name:
+                                # Check if there's no division by 100 nearby
+                                parent_ops = [p for p in ast.walk(node) if isinstance(p, ast.BinOp)]
+                                has_div_100 = any(
+                                    isinstance(op, ast.BinOp) and 
+                                    isinstance(op.op, ast.Div) and
+                                    isinstance(op.right, ast.Constant) and
+                                    op.right.value == 100
+                                    for op in parent_ops
+                                )
+                                if not has_div_100:
+                                    issues.append({
+                                        'type': 'missing_percentage_conversion',
+                                        'message': f"Function '{node.name}' multiplies by percentage (line {n.lineno}) without dividing by 100",
+                                        'function_name': node.name,
+                                        'line_number': n.lineno
+                                    })
+            
+            # NEW: Detect wrong comparison operators in max/min functions
+            if 'max' in func_name_lower or 'min' in func_name_lower or 'find' in func_name_lower:
+                for n in ast.walk(node):
+                    if isinstance(n, ast.If):
+                        # Check comparison in if statement
+                        if isinstance(n.test, ast.Compare):
+                            comp = n.test
+                            if len(comp.ops) == 1:
+                                op = comp.ops[0]
+                                # If function has "max" but uses < (less than)
+                                if 'max' in func_name_lower and isinstance(op, ast.Lt):
+                                    issues.append({
+                                        'type': 'wrong_comparison',
+                                        'message': f"Function '{node.name}' finds maximum but uses '<' operator (line {n.lineno}) - should use '>'",
+                                        'function_name': node.name,
+                                        'line_number': n.lineno,
+                                        'operator': 'less_than',
+                                        'expected_operator': 'greater_than'
+                                    })
+                                # If function has "min" but uses > (greater than)
+                                elif 'min' in func_name_lower and isinstance(op, ast.Gt):
+                                    issues.append({
+                                        'type': 'wrong_comparison',
+                                        'message': f"Function '{node.name}' finds minimum but uses '>' operator (line {n.lineno}) - should use '<'",
+                                        'function_name': node.name,
+                                        'line_number': n.lineno,
+                                        'operator': 'greater_than',
+                                        'expected_operator': 'less_than'
+                                    })
+            
             # Check for potential off-by-one errors in range() calls
             if has_return:  # Only check functions that do return
                 for n in ast.walk(node):
@@ -210,6 +302,47 @@ def _generate_logical_fixes(issues: List[Dict[str, Any]], source_code: str) -> L
                 'line_number': line_num,
                 'suggested_fix': f"Add 'return {var_to_return}' at end of function",
                 'variable_to_return': var_to_return
+            })
+        
+        elif issue['type'] == 'wrong_operator':
+            func_name = issue.get('function_name')
+            line_num = issue.get('line_number')
+            operator = issue.get('operator')
+            expected = issue.get('expected_operator')
+            
+            fixes.append({
+                'issue_type': 'wrong_operator',
+                'function_name': func_name,
+                'line_number': line_num,
+                'suggested_fix': f"Change operator from '{operator}' to '{expected}' at line {line_num}",
+                'current_operator': operator,
+                'expected_operator': expected
+            })
+        
+        elif issue['type'] == 'missing_percentage_conversion':
+            func_name = issue.get('function_name')
+            line_num = issue.get('line_number')
+            
+            fixes.append({
+                'issue_type': 'missing_percentage_conversion',
+                'function_name': func_name,
+                'line_number': line_num,
+                'suggested_fix': f"Divide percentage by 100 before multiplying at line {line_num}",
+            })
+        
+        elif issue['type'] == 'wrong_comparison':
+            func_name = issue.get('function_name')
+            line_num = issue.get('line_number')
+            operator = issue.get('operator')
+            expected = issue.get('expected_operator')
+            
+            fixes.append({
+                'issue_type': 'wrong_comparison',
+                'function_name': func_name,
+                'line_number': line_num,
+                'suggested_fix': f"Change comparison from '{operator}' to '{expected}' at line {line_num}",
+                'current_operator': operator,
+                'expected_operator': expected
             })
         
         elif issue['type'] == 'potential_off_by_one':
@@ -290,9 +423,18 @@ def format_logical_error(validation_result: Dict[str, Any]) -> Dict[str, Any]:
     if validation_result['is_logically_correct']:
         return {}
     
-    # Prioritize issues: potential_off_by_one > missing_return_statement > output_mismatch > suspicious_none_output
-    # Note: off_by_one prioritized over output_mismatch because it has actionable code fix
-    priority_types = ['potential_off_by_one', 'missing_return_statement', 'output_mismatch', 'suspicious_none_output']
+    # Prioritize issues: wrong operators are highest priority as they're most actionable
+    # Order: wrong_comparison > wrong_operator > missing_percentage_conversion > output_mismatch > 
+    #        potential_off_by_one > missing_return_statement > suspicious_none_output
+    priority_types = [
+        'wrong_comparison',
+        'wrong_operator', 
+        'missing_percentage_conversion',
+        'output_mismatch',
+        'potential_off_by_one', 
+        'missing_return_statement', 
+        'suspicious_none_output'
+    ]
     
     selected_issue = None
     for priority_type in priority_types:

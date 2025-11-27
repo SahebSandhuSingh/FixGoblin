@@ -1,0 +1,21 @@
+def calculate_total(items):
+    """Calculate total price of items"""
+    total = 0
+    for item in items:
+        total += item['price']
+    # Missing return statement!
+
+def apply_discount(price, percent):
+    """Apply discount to price"""
+    discount = price * percent / 100  # Should divide by 100
+    return price - discount  # Should subtract, not add
+
+# Test
+items = [{'price': 10}, {'price': 20}, {'price': 30}]
+result = calculate_total(items)
+print(f"Total: {result}")
+print(f"Expected: 60, Got: {result}")
+
+discounted = apply_discount(100, 20)
+print(f"\nDiscounted price: {discounted}")
+print(f"Expected: 80, Got: {discounted}")

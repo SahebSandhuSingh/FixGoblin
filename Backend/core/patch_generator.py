@@ -928,7 +928,7 @@ if __name__ == "__main__":
 
 def _generate_logical_error_patches(error_data: Dict[str, Any], user_code: str) -> List[Dict[str, Any]]:
     """
-    Generate patches for logical errors (missing return statements, off-by-one, etc.).
+    Generate patches for logical errors (missing return statements, off-by-one, wrong operators, etc.).
     """
     patches = []
     
@@ -982,6 +982,107 @@ def _generate_logical_error_patches(error_data: Dict[str, Any], user_code: str) 
             'diff': _generate_diff(user_code, patched_code),
             'patch_type': 'correctness'
         })
+    
+    elif logical_issue.get('type') == 'wrong_comparison':
+        func_name = logical_issue.get('function_name')
+        line_num = logical_issue.get('line_number')
+        operator = logical_issue.get('operator')
+        expected_op = logical_issue.get('expected_operator')
+        
+        # Fix wrong comparison operator (< to > or vice versa)
+        lines = user_code.split('\n')
+        if line_num and line_num <= len(lines):
+            target_line = lines[line_num - 1]
+            
+            # Replace the operator
+            if operator == 'less_than' and expected_op == 'greater_than':
+                new_line = target_line.replace(' < ', ' > ')
+            elif operator == 'greater_than' and expected_op == 'less_than':
+                new_line = target_line.replace(' > ', ' < ')
+            else:
+                new_line = target_line
+            
+            patched_lines = lines.copy()
+            patched_lines[line_num - 1] = new_line
+            patched_code = '\n'.join(patched_lines)
+            
+            patches.append({
+                'id': 'logical_patch_1',
+                'description': f"Fix comparison operator in {func_name}(): change '{operator}' to '{expected_op}'",
+                'patched_code': patched_code,
+                'diff': _generate_diff(user_code, patched_code),
+                'patch_type': 'correctness'
+            })
+    
+    elif logical_issue.get('type') == 'wrong_operator':
+        func_name = logical_issue.get('function_name')
+        line_num = logical_issue.get('line_number')
+        operator = logical_issue.get('operator')
+        expected_op = logical_issue.get('expected_operator')
+        
+        # Fix wrong arithmetic operator (+ to -, etc.)
+        lines = user_code.split('\n')
+        if line_num and line_num <= len(lines):
+            target_line = lines[line_num - 1]
+            
+            # Replace the operator
+            if operator == 'add' and expected_op == 'subtract':
+                # Find price/total + discount pattern and change to subtraction
+                import re
+                pattern = r'(\w+)\s*\+\s*(discount|reduction|deduction)'
+                match = re.search(pattern, target_line)
+                if match:
+                    new_line = re.sub(r'\s*\+\s*', ' - ', target_line, count=1)
+                else:
+                    new_line = target_line.replace(' + ', ' - ', 1)
+            else:
+                new_line = target_line
+            
+            patched_lines = lines.copy()
+            patched_lines[line_num - 1] = new_line
+            patched_code = '\n'.join(patched_lines)
+            
+            patches.append({
+                'id': 'logical_patch_1',
+                'description': f"Fix arithmetic operator in {func_name}(): change addition to subtraction for discount",
+                'patched_code': patched_code,
+                'diff': _generate_diff(user_code, patched_code),
+                'patch_type': 'correctness'
+            })
+    
+    elif logical_issue.get('type') == 'missing_percentage_conversion':
+        func_name = logical_issue.get('function_name')
+        line_num = logical_issue.get('line_number')
+        
+        # Fix missing division by 100 for percentage
+        lines = user_code.split('\n')
+        if line_num and line_num <= len(lines):
+            target_line = lines[line_num - 1]
+            
+            # Find multiplication pattern with percentage variable
+            import re
+            pattern = r'(\w+)\s*\*\s*(\w*percent\w*|\w*rate\w*)'
+            match = re.search(pattern, target_line, re.IGNORECASE)
+            if match:
+                # Add division by 100
+                price_var = match.group(1)
+                percent_var = match.group(2)
+                new_line = target_line.replace(
+                    f'{price_var} * {percent_var}',
+                    f'{price_var} * {percent_var} / 100'
+                )
+                
+                patched_lines = lines.copy()
+                patched_lines[line_num - 1] = new_line
+                patched_code = '\n'.join(patched_lines)
+                
+                patches.append({
+                    'id': 'logical_patch_1',
+                    'description': f"Fix percentage calculation in {func_name}(): divide by 100",
+                    'patched_code': patched_code,
+                    'diff': _generate_diff(user_code, patched_code),
+                    'patch_type': 'correctness'
+                })
     
     elif logical_issue.get('type') == 'potential_off_by_one':
         func_name = logical_issue.get('function_name')
