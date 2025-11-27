@@ -558,7 +558,15 @@ def _fix_unterminated_string(code: str, lineno: int, faulty_line: Optional[str])
 
 
 def _fix_indentation(code: str, lineno: int, faulty_line: Optional[str]) -> List[Dict]:
-    """Generate patch for indentation errors."""
+    """
+    Generate patches for indentation errors.
+    
+    Handles:
+    - Unexpected indent
+    - Expected an indented block
+    - Unindent does not match any outer indentation level
+    - Mixing tabs and spaces
+    """
     lines = code.splitlines()
     if lineno < 1 or lineno > len(lines):
         return []
@@ -592,22 +600,82 @@ def _fix_indentation(code: str, lineno: int, faulty_line: Optional[str]) -> List
                 patched_code = "\n".join(lines_copy)
                 
                 patches.append({
-                    "description": f"Fix indentation at line {lineno} to match context",
+                    "description": f"Fix indentation at line {lineno} to match context (add {target_indent} spaces)",
                     "patched_code": patched_code,
                     "applied_safely": True
                 })
     
-    # Strategy 2: Remove all indentation (dedent completely)
+    # Strategy 2: Convert tabs to spaces (4 spaces per tab)
+    if faulty_line and '\t' in faulty_line:
+        fixed_line = faulty_line.replace('\t', '    ')
+        lines_copy = lines.copy()
+        lines_copy[lineno - 1] = fixed_line
+        patched_code = "\n".join(lines_copy)
+        
+        patches.append({
+            "description": f"Convert tabs to spaces at line {lineno}",
+            "patched_code": patched_code,
+            "applied_safely": True
+        })
+    
+    # Strategy 3: Remove all indentation (dedent completely)
     if faulty_line and faulty_line != faulty_line.lstrip():
         lines_copy = lines.copy()
         lines_copy[lineno - 1] = faulty_line.lstrip()
         patched_code = "\n".join(lines_copy)
         
         patches.append({
-            "description": f"Remove indentation at line {lineno}",
+            "description": f"Remove all indentation at line {lineno}",
             "patched_code": patched_code,
             "applied_safely": False  # Less safe - might break logic
         })
+    
+    # Strategy 4: Add one level of indentation (4 spaces) if expected block is missing
+    if lineno > 1:
+        prev_line_idx = lineno - 2
+        if prev_line_idx >= 0:
+            prev_line = lines[prev_line_idx]
+            if prev_line.strip().endswith(':'):
+                # Previous line was a header, current line needs indentation
+                if faulty_line:
+                    current_indent = len(faulty_line) - len(faulty_line.lstrip())
+                    prev_indent = len(prev_line) - len(prev_line.lstrip())
+                    
+                    if current_indent <= prev_indent:
+                        # Need to add indentation
+                        content = faulty_line.lstrip()
+                        fixed_line = ' ' * (prev_indent + 4) + content
+                        lines_copy = lines.copy()
+                        lines_copy[lineno - 1] = fixed_line
+                        patched_code = "\n".join(lines_copy)
+                        
+                        patches.append({
+                            "description": f"Add required indentation after ':' at line {lineno}",
+                            "patched_code": patched_code,
+                            "applied_safely": True
+                        })
+    
+    # Strategy 5: Align with common indentation level (multiples of 4)
+    if faulty_line and faulty_line.strip():
+        current_indent = len(faulty_line) - len(faulty_line.lstrip())
+        
+        # Round to nearest multiple of 4
+        if current_indent % 4 != 0:
+            nearest_lower = (current_indent // 4) * 4
+            nearest_upper = nearest_lower + 4
+            
+            for target_indent in [nearest_lower, nearest_upper]:
+                content = faulty_line.lstrip()
+                fixed_line = ' ' * target_indent + content
+                lines_copy = lines.copy()
+                lines_copy[lineno - 1] = fixed_line
+                patched_code = "\n".join(lines_copy)
+                
+                patches.append({
+                    "description": f"Normalize indentation to {target_indent} spaces at line {lineno}",
+                    "patched_code": patched_code,
+                    "applied_safely": False
+                })
     
     return patches
 

@@ -24,6 +24,10 @@ from core.sandbox_runner import run_in_sandbox
 from core.error_parser import parse_error
 from core.logical_validator import validate_logic
 
+# Import universal repair
+sys.path.insert(0, os.path.dirname(__file__))
+from universal_repair import universal_repair
+
 # Page configuration
 st.set_page_config(
     page_title="FixGoblin",
@@ -32,64 +36,525 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for modern styling
+# Custom CSS for next-gen glassmorphism styling
 st.markdown("""
 <style>
+    /* === Page Background === */
+    .stApp {
+        background: #0B0F14;
+        background-image: 
+            radial-gradient(circle at 20% 10%, rgba(88, 101, 242, 0.08) 0%, transparent 40%),
+            radial-gradient(circle at 80% 90%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.04) 0%, transparent 60%);
+    }
+    
+    /* Main Container */
+    .main .block-container {
+        padding-top: 3rem;
+        max-width: 1400px;
+    }
+    
+    /* Light mode background */
+    @media (prefers-color-scheme: light) {
+        .stApp {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            background-image: 
+                radial-gradient(circle at 20% 10%, rgba(88, 101, 242, 0.03) 0%, transparent 40%),
+                radial-gradient(circle at 80% 90%, rgba(139, 92, 246, 0.02) 0%, transparent 50%);
+        }
+    }
+    
+    /* === GLASSMORPHISM PANELS === */
+    
+    /* Column containers - subtle glass effect */
+    [data-testid="column"] {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 1.5rem;
+        box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        [data-testid="column"] {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+    }
+    
+    /* Hover Effect on Glass Panels */
+    [data-testid="column"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 40px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            0 0 40px rgba(88, 101, 242, 0.15);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        [data-testid="column"]:hover {
+            box-shadow: 
+                0 12px 40px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6),
+                0 0 30px rgba(88, 101, 242, 0.2);
+        }
+    }
+    
+    /* === TYPOGRAPHY === */
     .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        color: #1f77b4;
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: #ffffff;
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 0 60px rgba(88, 101, 242, 0.5);
+        letter-spacing: -0.02em;
     }
+    
+    @media (prefers-color-scheme: light) {
+        .main-header {
+            color: #1a1a1a;
+            text-shadow: 0 0 40px rgba(88, 101, 242, 0.2);
+        }
+    }
+    
+    .subtitle-text {
+        color: rgba(255, 255, 255, 0.7);
+        text-align: center;
+        font-size: 1.2rem;
+        margin-bottom: 3rem;
+    }
+    
+    @media (prefers-color-scheme: light) {
+        .subtitle-text {
+            color: rgba(0, 0, 0, 0.6);
+        }
+    }
+    
     .section-header {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #2c3e50;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-        border-bottom: 2px solid #1f77b4;
-        padding-bottom: 0.5rem;
+        font-size: 1.6rem;
+        font-weight: 600;
+        color: #ffffff;
+        margin-top: 2.5rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     }
+    
+    @media (prefers-color-scheme: light) {
+        .section-header {
+            color: #1a1a1a;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+    }
+    
+    /* Subheaders and labels */
+    h1, h2, h3, h4, h5, h6 {
+        color: #ffffff !important;
+    }
+    
+    p, span, div, label, .stMarkdown {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+    
+    @media (prefers-color-scheme: light) {
+        h1, h2, h3, h4, h5, h6 {
+            color: #1a1a1a !important;
+        }
+        
+        p, span, div, label, .stMarkdown {
+            color: rgba(0, 0, 0, 0.87) !important;
+        }
+    }
+    
+    /* === NOTIFICATION BOXES === */
+    .success-box, .error-box, .info-box {
+        padding: 1.25rem;
+        border-radius: 20px;
+        margin: 1.5rem 0;
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid;
+        box-shadow: 
+            0 0 0 1px rgba(255, 255, 255, 0.04),
+            0 20px 50px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        animation: slideInUp 0.5s ease-out;
+    }
+    
     .success-box {
-        padding: 1rem;
-        background-color: #d4edda;
-        border-left: 4px solid #28a745;
-        border-radius: 4px;
-        margin: 1rem 0;
+        background: rgba(34, 197, 94, 0.12);
+        border-color: rgba(34, 197, 94, 0.3);
+        color: #ffffff;
     }
+    
     .error-box {
-        padding: 1rem;
-        background-color: #f8d7da;
-        border-left: 4px solid #dc3545;
-        border-radius: 4px;
-        margin: 1rem 0;
+        background: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #ffffff;
     }
+    
     .info-box {
-        padding: 1rem;
-        background-color: #d1ecf1;
-        border-left: 4px solid #17a2b8;
-        border-radius: 4px;
-        margin: 1rem 0;
+        background: rgba(59, 130, 246, 0.12);
+        border-color: rgba(59, 130, 246, 0.3);
+        color: #ffffff;
     }
-    .stButton>button {
-        background-color: #1f77b4;
-        color: white;
+    
+    @media (prefers-color-scheme: light) {
+        .success-box {
+            background: rgba(34, 197, 94, 0.08);
+            border-color: rgba(34, 197, 94, 0.25);
+            color: #166534;
+        }
+        
+        .error-box {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.25);
+            color: #991b1b;
+        }
+        
+        .info-box {
+            background: rgba(59, 130, 246, 0.08);
+            border-color: rgba(59, 130, 246, 0.25);
+            color: #1e40af;
+        }
+    }
+    
+    /* === BUTTONS === */
+    .stButton > button {
+        background: rgba(88, 101, 242, 0.15);
+        color: #ffffff;
         font-size: 1.1rem;
-        padding: 0.75rem 2rem;
-        border-radius: 8px;
-        border: none;
-        font-weight: bold;
+        font-weight: 600;
+        padding: 0.875rem 2.5rem;
+        border-radius: 20px;
+        border: 1px solid rgba(88, 101, 242, 0.3);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        box-shadow: 
+            0 0 0 1px rgba(255, 255, 255, 0.04),
+            0 20px 50px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
     }
-    .stButton>button:hover {
-        background-color: #145a8a;
+    
+    @media (prefers-color-scheme: light) {
+        .stButton > button {
+            background: rgba(88, 101, 242, 0.1);
+            color: #1a1a1a;
+            border: 1px solid rgba(88, 101, 242, 0.25);
+            box-shadow: 
+                0 0 0 1px rgba(255, 255, 255, 0.2),
+                0 20px 50px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+    }
+    
+    /* Button Sheen Effect */
+    .stButton > button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    }
+    
+    .stButton > button:hover {
+        transform: scale(1.02);
+        box-shadow: 
+            0 0 0 1px rgba(88, 101, 242, 0.4),
+            0 0 60px rgba(88, 101, 242, 0.4),
+            0 25px 60px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        border-color: rgba(88, 101, 242, 0.5);
+        background: rgba(88, 101, 242, 0.25);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        .stButton > button:hover {
+            box-shadow: 
+                0 0 0 1px rgba(88, 101, 242, 0.3),
+                0 0 40px rgba(88, 101, 242, 0.25),
+                0 25px 60px rgba(0, 0, 0, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            background: rgba(88, 101, 242, 0.18);
+        }
+    }
+    
+    .stButton > button:active {
+        transform: scale(0.98);
+    }
+    
+    /* Primary Button */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, rgba(88, 101, 242, 0.3), rgba(139, 92, 246, 0.3));
+        border: 1px solid rgba(88, 101, 242, 0.5);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        .stButton > button[kind="primary"] {
+            background: linear-gradient(135deg, rgba(88, 101, 242, 0.2), rgba(139, 92, 246, 0.2));
+        }
+    }
+    
+    /* === INPUT FIELDS === */
+    .stTextInput > div > div > input,
+    .stTextArea textarea,
+    .stSelectbox > div > div {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+        border-radius: 16px !important;
+        color: #ffffff !important;
+        backdrop-filter: blur(15px) saturate(180%);
+        -webkit-backdrop-filter: blur(15px) saturate(180%);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        .stTextInput > div > div > input,
+        .stTextArea textarea,
+        .stSelectbox > div > div {
+            background: rgba(255, 255, 255, 0.6) !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+            color: #1a1a1a !important;
+        }
+    }
+    
+    .stTextInput > div > div > input:hover,
+    .stTextArea textarea:hover {
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        .stTextInput > div > div > input:hover,
+        .stTextArea textarea:hover {
+            border-color: rgba(88, 101, 242, 0.3) !important;
+            box-shadow: 0 0 20px rgba(88, 101, 242, 0.1);
+        }
+    }
+    
+    .stTextInput > div > div > input:focus,
+    .stTextArea textarea:focus {
+        border-color: rgba(88, 101, 242, 0.5) !important;
+        box-shadow: 0 0 40px rgba(88, 101, 242, 0.3) !important;
+        outline: none !important;
+    }
+    
+    /* === FILE UPLOAD DROP ZONE === */
+    [data-testid="stFileUploader"] section {
+        background: rgba(255, 255, 255, 0.04);
+        border: 2px dashed rgba(255, 255, 255, 0.15) !important;
+        border-radius: 20px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        [data-testid="stFileUploader"] section {
+            background: rgba(255, 255, 255, 0.4);
+            border: 2px dashed rgba(0, 0, 0, 0.15) !important;
+        }
+    }
+    
+    [data-testid="stFileUploader"] section:hover {
+        border-color: rgba(88, 101, 242, 0.4) !important;
+        box-shadow: 0 0 40px rgba(88, 101, 242, 0.2);
+        background: rgba(88, 101, 242, 0.08);
+    }
+    
+    /* === SIDEBAR === */
+    [data-testid="stSidebar"] {
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        border-right: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        [data-testid="stSidebar"] {
+            background: rgba(255, 255, 255, 0.7);
+            border-right: 1px solid rgba(0, 0, 0, 0.08);
+        }
+    }
+    
+    [data-testid="stSidebar"] h2 {
+        color: #ffffff;
+    }
+    
+    @media (prefers-color-scheme: light) {
+        [data-testid="stSidebar"] h2 {
+            color: #1a1a1a;
+        }
+    }
+    
+    /* === CODE BLOCKS === */
+    .stCodeBlock {
+        background: rgba(0, 0, 0, 0.4) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        .stCodeBlock {
+            background: rgba(0, 0, 0, 0.04) !important;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+    }
+    
+    /* === METRICS === */
+    [data-testid="stMetric"] {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 1rem;
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        box-shadow: 
+            0 0 0 1px rgba(255, 255, 255, 0.04),
+            0 15px 40px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        [data-testid="stMetric"] {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 
+                0 0 0 1px rgba(255, 255, 255, 0.2),
+                0 15px 40px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+    }
+    
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 0 0 1px rgba(255, 255, 255, 0.08),
+            0 20px 50px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-testid="stMetric"] label {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    
+    @media (prefers-color-scheme: light) {
+        [data-testid="stMetric"] label {
+            color: rgba(0, 0, 0, 0.6) !important;
+        }
+    }
+    
+    [data-testid="stMetric"] [data-testid="stMetricValue"] {
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+    
+    @media (prefers-color-scheme: light) {
+        [data-testid="stMetric"] [data-testid="stMetricValue"] {
+            color: #1a1a1a !important;
+        }
+    }
+    
+    /* === EXPANDERS === */
+    .streamlit-expanderHeader {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        color: #ffffff !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        .streamlit-expanderHeader {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #1a1a1a !important;
+        }
+    }
+    
+    .streamlit-expanderHeader:hover {
+        border-color: rgba(88, 101, 242, 0.3);
+        box-shadow: 0 0 30px rgba(88, 101, 242, 0.15);
+    }
+    
+    /* === DIVIDERS === */
+    hr {
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        margin: 2rem 0;
+    }
+    
+    @media (prefers-color-scheme: light) {
+        hr {
+            border-color: rgba(0, 0, 0, 0.08) !important;
+        }
+    }
+    
+    /* === ANIMATIONS === */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* Apply subtle animations */
+    .main-header, .subtitle-text {
+        animation: fadeIn 0.6s ease-out;
+    }
+    
+    /* === SCROLLBAR === */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
+    
+    @media (prefers-color-scheme: light) {
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.15);
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # App Title
-st.markdown('<div class="main-header">FixGoblin</div>', unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#7f8c8d; font-size:1.1rem;'>AI-Powered Autonomous Code Repair</p>", unsafe_allow_html=True)
+st.markdown('<div class="main-header">🔮 FixGoblin</div>', unsafe_allow_html=True)
+st.markdown("<p class='subtitle-text'>AI-Powered Autonomous Code Repair</p>", unsafe_allow_html=True)
 
 # Sidebar configuration
 with st.sidebar:
@@ -148,14 +613,36 @@ with col1:
     st.subheader("📁 Upload Source Code")
     uploaded_file = st.file_uploader(
         "Choose a file",
-        type=["py", "js", "java", "cpp", "txt"],
-        help="Upload your source code file"
+        type=["py", "js", "java", "cpp", "c", "cc", "cxx", "go", "txt"],
+        help="Upload your source code file - ALL LANGUAGES SUPPORTED!"
     )
     
     if uploaded_file is not None:
-        st.success(f"✅ File uploaded: **{uploaded_file.name}**")
+        file_ext = uploaded_file.name.split('.')[-1].lower()
+        
+        # Language support map
+        lang_support = {
+            'py': '🐍 Python',
+            'cpp': '⚡ C++',
+            'cc': '⚡ C++',
+            'cxx': '⚡ C++',
+            'c': '🔧 C',
+            'java': '☕ Java',
+            'js': '📜 JavaScript',
+            'go': '🔵 Go'
+        }
+        
+        lang_name = lang_support.get(file_ext, f'📄 {file_ext.upper()}')
+        st.success(f"✅ File uploaded: **{uploaded_file.name}** ({lang_name})")
+        st.info(f"✨ **Full auto-repair available for Python, C++, Java, and JavaScript!**")
+        
         file_content = uploaded_file.read().decode("utf-8")
-        st.code(file_content, language="python", line_numbers=True)
+        
+        # Detect language for syntax highlighting
+        lang_map = {'py': 'python', 'cpp': 'cpp', 'cc': 'cpp', 'cxx': 'cpp', 'c': 'c', 'java': 'java', 'js': 'javascript', 'go': 'go'}
+        display_lang = lang_map.get(file_ext, 'python')
+        
+        st.code(file_content, language=display_lang, line_numbers=True)
 
 with col2:
     st.subheader("Edit Or Paste Code Here")
@@ -168,10 +655,40 @@ with col2:
 
 # Determine which code to use
 code_to_debug = ""
+file_extension = "py"  # Default to Python
+
 if uploaded_file is not None:
     code_to_debug = file_content
+    file_extension = uploaded_file.name.split('.')[-1].lower()
 elif code_input:
     code_to_debug = code_input
+    file_extension = "py"
+
+# Show language support info
+if code_to_debug:
+    lang_emoji = {
+        'py': '🐍 Python',
+        'cpp': '⚡ C++',
+        'cc': '⚡ C++',
+        'cxx': '⚡ C++',
+        'c': '🔧 C',
+        'java': '☕ Java',
+        'js': '📜 JavaScript',
+        'go': '🔵 Go'
+    }
+    
+    if file_extension in ['py', 'cpp', 'cc', 'cxx', 'c', 'java', 'js']:
+        st.success(f"""
+        ✅ **Full Auto-Repair Available for {lang_emoji.get(file_extension, file_extension.upper())}**
+        
+        FixGoblin will automatically:
+        - 🔍 Detect errors (syntax, runtime, logical)
+        - 🔧 Generate fix patches
+        - ✅ Test and apply working fixes
+        - 📦 Create backup of original code
+        """)
+    elif file_extension == 'go':
+        st.info(f"ℹ️ **{lang_emoji.get(file_extension, file_extension.upper())}**: Error detection available. Full auto-repair coming soon!")
 
 # Run Debugger Button
 st.divider()
@@ -188,10 +705,20 @@ if run_button:
         if 'repair_result' not in st.session_state:
             st.session_state.repair_result = None
         
-        # Create temporary file for code
+        # Create temporary file for code with correct extension
         temp_file = None
         try:
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+            suffix_map = {
+                'py': '.py',
+                'cpp': '.cpp', 'cc': '.cpp', 'cxx': '.cpp',
+                'c': '.c',
+                'java': '.java',
+                'js': '.js',
+                'go': '.go'
+            }
+            suffix = suffix_map.get(file_extension, '.py')
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix=suffix, delete=False, encoding='utf-8') as f:
                 f.write(code_to_debug)
                 temp_file = f.name
             
@@ -233,13 +760,14 @@ if run_button:
                 with st.spinner("🔍 Running autonomous repair..."):
                     progress_bar = st.progress(0)
                     
-                    # Run autonomous repair
+                    # Run autonomous repair (universal for all languages)
                     start_time = time.time()
                     
-                    result = autonomous_repair(
+                    # Use universal_repair for all languages (it handles Python too)
+                    result = universal_repair(
                         file_path=temp_file,
                         max_iterations=max_iterations,
-                        optimize_efficiency=optimize_efficiency
+                        language=None  # Auto-detect from extension
                     )
                     
                     execution_time = time.time() - start_time
@@ -264,7 +792,10 @@ if run_button:
             
             # Show success or failure
             if result['success']:
-                st.success(f"✅ Repair successful in {result['total_iterations']} iteration(s)!")
+                if result['total_iterations'] == 0:
+                    st.success(f"🎉 **CODE IS ALREADY PERFECT!** No errors found - your code works correctly!")
+                else:
+                    st.success(f"✅ Repair successful in {result['total_iterations']} iteration(s)!")
             else:
                 st.error(f"❌ Repair failed: {result['reason']}")
         
@@ -288,33 +819,52 @@ if run_button:
             
             st.divider()
             
-            # Section 1: Execution Output
-            st.markdown('<div class="section-header">📤 Execution Output</div>', unsafe_allow_html=True)
-            
-            # Get output from last iteration if available
-            stdout_output = ""
-            stderr_output = ""
-            
-            if result['iterations']:
-                # Try to run final code to get output
-                try:
-                    # Create temp file with final code
-                    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
-                        f.write(st.session_state.final_code)
-                        temp_path = f.name
-                    
-                    # Run in sandbox
-                    sandbox_result = run_in_sandbox(temp_path)
-                    stdout_output = sandbox_result.get('stdout', '').strip()
-                    stderr_output = sandbox_result.get('stderr', '').strip()
-                    
-                    # Cleanup
-                    os.unlink(temp_path)
-                except Exception as e:
-                    stdout_output = f"(Could not capture output: {str(e)})"
-                    stderr_output = ""
-            
-            col_out1, col_out2 = st.columns(2)
+            # If code was already perfect, show special message
+            if result['success'] and result['total_iterations'] == 0:
+                st.balloons()
+                st.markdown("""
+                ### 🎉 Your Code is Perfect!
+                
+                No errors detected. Your code:
+                - ✅ Compiles successfully
+                - ✅ Runs without errors
+                - ✅ Produces correct output
+                
+                **No repairs needed!**
+                """)
+                
+                # Show the code
+                st.markdown('<div class="section-header">📄 Your Code</div>', unsafe_allow_html=True)
+                st.code(st.session_state.get('original_code', ''), language='cpp', line_numbers=True)
+                
+            else:
+                # Section 1: Execution Output
+                st.markdown('<div class="section-header">📤 Execution Output</div>', unsafe_allow_html=True)
+                
+                # Get output from last iteration if available
+                stdout_output = ""
+                stderr_output = ""
+                
+                if result['iterations']:
+                    # Try to run final code to get output
+                    try:
+                        # Create temp file with final code
+                        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+                            f.write(st.session_state.final_code)
+                            temp_path = f.name
+                        
+                        # Run in sandbox
+                        sandbox_result = run_in_sandbox(temp_path)
+                        stdout_output = sandbox_result.get('stdout', '').strip()
+                        stderr_output = sandbox_result.get('stderr', '').strip()
+                        
+                        # Cleanup
+                        os.unlink(temp_path)
+                    except Exception as e:
+                        stdout_output = f"(Could not capture output: {str(e)})"
+                        stderr_output = ""
+                
+                col_out1, col_out2 = st.columns(2)
             
             with col_out1:
                 st.markdown("**Standard Output (stdout):**")
@@ -521,8 +1071,27 @@ if run_button:
 # Footer
 st.divider()
 st.markdown("""
-<div style="text-align: center; color: #7f8c8d; padding: 2rem 0;">
-    <p><strong>FixGoblin</strong> | AI-Powered Autonomous Code Repair v2.0</p>
-    <p>🔧 Multi-Language Debugger with Syntax & Logical Error Detection | 🛡️ Secure Sandboxed Execution</p>
+<div style="text-align: center; padding: 2rem 0;">
+    <p style="color: rgba(255, 255, 255, 0.7); font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem;">
+        <strong style="background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.6) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">FixGoblin</strong> | AI-Powered Autonomous Code Repair v2.0
+    </p>
+    <p style="color: rgba(255, 255, 255, 0.5); font-size: 0.95rem;">
+        🔧 Multi-Language Debugger with Syntax & Logical Error Detection | 🛡️ Secure Sandboxed Execution
+    </p>
 </div>
+<style>
+    @media (prefers-color-scheme: light) {
+        div[style*="text-align: center"] p:first-of-type {
+            color: rgba(0, 0, 0, 0.7) !important;
+        }
+        div[style*="text-align: center"] p:first-of-type strong {
+            background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+        }
+        div[style*="text-align: center"] p:last-of-type {
+            color: rgba(0, 0, 0, 0.5) !important;
+        }
+    }
+</style>
 """, unsafe_allow_html=True)

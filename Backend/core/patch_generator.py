@@ -50,7 +50,7 @@ def generate_patch_candidates(error_data: Dict[str, Any], user_code: str, optimi
     
     if error_type == "IndexError":
         correctness_patches = _generate_index_error_patches(error_data, user_code)
-    elif error_type == "SyntaxError":
+    elif error_type in ["SyntaxError", "IndentationError", "TabError"]:
         correctness_patches = _generate_syntax_error_patches(error_data, user_code)
     elif error_type == "NameError":
         correctness_patches = _generate_name_error_patches(error_data, user_code)

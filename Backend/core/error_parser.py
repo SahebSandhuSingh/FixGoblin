@@ -78,10 +78,14 @@ def _parse_syntax_error(stderr: str, code_lines: list) -> Optional[Dict[str, Any
         if x = 5:
            ^
     SyntaxError: invalid syntax
+    
+    Also handles:
+    - IndentationError
+    - TabError
     """
     
-    # Check if it's a syntax error
-    if "SyntaxError" not in stderr and "IndentationError" not in stderr:
+    # Check if it's a syntax/indentation error
+    if not any(err in stderr for err in ["SyntaxError", "IndentationError", "TabError"]):
         return None
     
     error_info = {
@@ -91,7 +95,7 @@ def _parse_syntax_error(stderr: str, code_lines: list) -> Optional[Dict[str, Any
         "faulty_snippet": None
     }
     
-    # Extract error type (SyntaxError, IndentationError, etc.)
+    # Extract error type (SyntaxError, IndentationError, TabError, etc.)
     error_type_match = re.search(r'(SyntaxError|IndentationError|TabError):', stderr)
     if error_type_match:
         error_info["error_type"] = error_type_match.group(1)

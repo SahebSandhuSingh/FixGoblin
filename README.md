@@ -1,10 +1,21 @@
-# FixGoblin - Autonomous Debugging System
+# FixGoblin - Universal Autonomous Debugging System
 
 ## 🎯 Overview
 
-FixGoblin is a complete autonomous debugging system that automatically detects, analyzes, and fixes bugs in code through iterative self-repair. Detects both **runtime crashes** and **logical errors** (off-by-one bugs, missing returns, etc.).
+FixGoblin is a **universal autonomous debugging system** that automatically detects, analyzes, and fixes bugs in code across **multiple programming languages**. It now supports **Python, C++, Java, JavaScript, and C** with full auto-repair capabilities!
 
-**NEW:** Comprehensive final report generation with colored terminal output and JSON export!
+### ✨ NEW: Multi-Language Support!
+
+| Language | Auto-Repair | Error Types | Status |
+|----------|-------------|-------------|--------|
+| 🐍 **Python** | ✅ Full | Syntax, Runtime, Logical | Production |
+| ⚡ **C++** | ✅ Full | Syntax, Compilation, Semantic | **NEW!** |
+| ☕ **Java** | ✅ Full | Compilation, Type, Runtime | **NEW!** |
+| 📜 **JavaScript** | ✅ Full | Syntax, Runtime, Type | **NEW!** |
+| 🔧 **C** | ✅ Full | Syntax, Compilation | **NEW!** |
+| 🔵 **Go** | ⚡ Detect | Compilation | Coming Soon |
+
+**No more language restrictions!** Use FixGoblin for any major language. 🚀
 
 ## 📁 Project Structure
 
@@ -32,18 +43,43 @@ FixGoblin/
 
 ## 🚀 Quick Start
 
+### Python Code
 ```bash
-# Run FixGoblin on any Python file
+# Run FixGoblin on Python file
 python fixgoblin.py backend/tests/your_code.py
 
-# Save detailed repair log + final report
-python fixgoblin.py backend/tests/your_code.py --log backend/logs/repair.json --final-report
+# Save detailed repair log
+python fixgoblin.py backend/tests/your_code.py --log backend/logs/repair.json
+```
 
-# Limit repair iterations
-python fixgoblin.py backend/tests/your_code.py --max-iterations 3
+### C++ Code (NEW!)
+```bash
+# Auto-repair C++ code
+python fixgoblin.py buggy_code.cpp
 
-# Enable efficiency mode (faster, only correctness patches)
-python fixgoblin.py backend/tests/your_code.py --efficiency
+# With custom iteration limit
+python fixgoblin.py buggy_code.cpp --max-iterations 10
+```
+
+### Java Code (NEW!)
+```bash
+# Auto-repair Java code
+python fixgoblin.py MyClass.java --log repair.json
+```
+
+### JavaScript Code (NEW!)
+```bash
+# Auto-repair JavaScript code
+python fixgoblin.py app.js
+```
+
+### Universal Repair (All Languages)
+```bash
+# Use universal repair directly
+python universal_repair.py <any_file>
+
+# Works with: .py, .cpp, .java, .js, .c, .go
+python universal_repair.py code.cpp --max-iterations 10
 ```
 
 ## 🏗️ Architecture
