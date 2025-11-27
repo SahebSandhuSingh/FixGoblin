@@ -2,11 +2,50 @@
 
 ## 🎯 Overview
 
-FixGoblin is a complete autonomous debugging system that automatically detects, analyzes, and fixes bugs in Python code.
+FixGoblin is a complete autonomous debugging system that automatically detects, analyzes, and fixes bugs in code through iterative self-repair. Detects both **runtime crashes** and **logical errors** (off-by-one bugs, missing returns, etc.).
+
+## 📁 Project Structure
+
+```
+FixGoblin/
+├── fixgoblin.py              # Main entry point
+├── README.md                 # This file
+│
+└── backend/
+    ├── core/                 # Core debugging modules
+    │   ├── sandbox_runner.py
+    │   ├── error_parser.py
+    │   ├── patch_generator.py
+    │   ├── patch_optimizer.py
+    │   ├── autonomous_repair.py
+    │   └── logical_validator.py
+    │
+    ├── backups/              # Backup files (*.backup)
+    ├── logs/                 # Repair logs (*.json)
+    ├── docs/                 # Documentation
+    ├── demos/                # Example scripts
+    └── tests/                # Sample buggy code
+```
+
+## 🚀 Quick Start
+
+```bash
+# Run FixGoblin on any Python file
+python fixgoblin.py backend/tests/your_code.py
+
+# Save detailed repair log
+python fixgoblin.py backend/tests/your_code.py --log backend/logs/repair.json
+
+# Limit repair iterations
+python fixgoblin.py backend/tests/your_code.py --max-iterations 3
+
+# Enable efficiency mode (faster, only correctness patches)
+python fixgoblin.py backend/tests/your_code.py --efficiency
+```
 
 ## 🏗️ Architecture
 
-### 4-Step Pipeline
+### 5-Step Pipeline
 
 1. **Sandbox Execution** (`sandbox_runner.py`)
    - Safely executes code in isolated temporary directories
@@ -33,16 +72,46 @@ FixGoblin is a complete autonomous debugging system that automatically detects, 
 
 4. **Patch Optimization** (`patch_optimizer.py`)
    - Tests each patch in sandbox
-   - Scores based on:
-     - ✓ No errors: +50 points
-     - ✓ Error reduction: +10 per error
-     - ✗ New errors: -10 per error
-     - ✓ Minimal changes: +5 points
-   - Selects and applies best patch
+   - Enhanced Scoring System:
+     - ✓ No errors: **+100 points** (working patches strongly favored)
+     - ✓ Error reduction: **+20 per error** reduced
+     - ✗ New errors: **-50 per error** introduced
+     - ✓ Minimal changes: **+10 points** for small diffs
+   - Selects and applies best patch with backup creation
+
+5. **Autonomous Repair Loop** (`autonomous_repair.py`) ⭐ **NEW**
+   - Iteratively fixes bugs until code works
+   - Automatically applies best patches
+   - Tracks repair progress across iterations
+   - Stops when code executes successfully or max iterations reached
+   - Generates detailed JSON logs of repair process
 
 ## 🚀 Usage
 
-### Basic Commands
+### Quick Start - Autonomous Repair (Recommended)
+
+The autonomous repair loop automatically fixes multiple bugs iteratively:
+
+```bash
+# Automatic multi-bug repair (default: 5 iterations)
+python3 autonomous_repair.py user.py
+
+# With efficiency optimization
+python3 autonomous_repair.py user.py --optimize
+
+# Custom iteration limit
+python3 autonomous_repair.py user.py --max-iterations 10
+
+# Save repair log to JSON
+python3 autonomous_repair.py user.py --log repair_log.json
+
+# Quiet mode (summary only)
+python3 autonomous_repair.py user.py --quiet
+```
+
+### Single-Pass Debugging (Legacy)
+
+For single-bug analysis without iteration:
 
 ```bash
 # Analyze only (show patches but don't apply)
@@ -60,53 +129,140 @@ python3 fixgoblin.py user.py --apply --optimize
 
 ### Flags
 
+**Autonomous Repair (`autonomous_repair.py`):**
+- `--max-iterations N` : Maximum repair attempts (default: 5)
+- `--optimize` : Generate efficiency improvement patches
+- `--log FILE` : Save repair history to JSON file
+- `--quiet` : Suppress detailed output
+
+**Single-Pass (`fixgoblin.py`):**
 - `--apply`, `-a` : Automatically apply the best patch
 - `--optimize`, `-o` : Generate efficiency improvement patches (max 2)
 
 ## 📊 Example Output
 
+### Autonomous Repair Loop
+
 ```
-🤖 AUTONOMOUS DEBUGGING SYSTEM - FixGoblin
-======================================================================
+🤖 AUTONOMOUS REPAIR LOOP - FixGoblin v2.0
+================================================================================
+📁 Target: multi_bug_test.py
+🔄 Max Iterations: 5
+⚡ Efficiency Mode: ENABLED
 
-STEP 1: SANDBOX EXECUTION
-→ IndexError: list index out of range (Line 5)
+▶▶▶▶ ITERATION 1/5 ▶▶▶▶
+🔬 Running code in sandbox...
+❌ Execution failed with errors
+🐛 Parsing error...
+   Type: SyntaxError (Line 5)
+   Message: expected ':'
+🔧 Generating patches...
+   Generated 1 patch candidate(s)
+🏆 Selecting best patch...
+   Selected: patch_2 (Score: -90)
+💾 Applying patch to file...
+   ✅ Applied: multi_bug_test.py.backup
+📊 Status: RETRYING
 
-STEP 2: ERROR ANALYSIS
-→ Bug Type: IndexError
-→ Faulty Code: if arr[j] > arr[j+1]:
+▶▶▶▶ ITERATION 2/5 ▶▶▶▶
+🔬 Running code in sandbox...
+❌ Execution failed with errors
+🐛 Parsing error...
+   Type: IndexError (Line 11)
+🏆 Selecting best patch...
+   Selected: patch_1 (Score: -35)
+💾 Applying patch to file...
+📊 Status: RETRYING
 
-STEP 3: PATCH GENERATION
-→ Generated 5 patches:
-  - 3 correctness patches
-  - 2 efficiency patches (when --optimize used)
+▶▶▶▶ ITERATION 3/5 ▶▶▶▶
+🔬 Running code in sandbox...
+❌ Execution failed with errors
+🐛 Parsing error...
+   Type: NameError (Line 20)
+🏆 Selecting best patch...
+   Selected: patch_1 (Score: 150)
+💾 Applying patch to file...
+📊 Status: FIXED
 
-STEP 4: PATCH OPTIMIZATION
-→ Testing patches...
-→ Best: patch_2 (75 points)
-→ Fix: Change range(0, n-i) to range(0, n-i-1)
+▶▶▶▶ ITERATION 4/5 ▶▶▶▶
+🔬 Running code in sandbox...
+✅ CODE RUNS SUCCESSFULLY!
 
-✅ DEBUGGING COMPLETE - Bug Fixed!
+📋 REPAIR SUMMARY
+================================================================================
+🎯 Final Status: SUCCESS
+✅ Success: True
+🔄 Total Iterations: 4
+📝 Reason: Code successfully repaired and executes without errors
+
+📊 ITERATION HISTORY:
+🔄 Iteration 1: SyntaxError → patch_2 (-90 pts) → RETRYING
+🔄 Iteration 2: IndexError → patch_1 (-35 pts) → RETRYING
+✅ Iteration 3: NameError → patch_1 (150 pts) → FIXED
+✅ Iteration 4: Verification passed
 ```
 
 ## 🎓 Key Features
+
+### Iterative Self-Repair ⭐
+- **Automatic Iteration**: Fixes bugs one-by-one until code works
+- **Progress Tracking**: Detailed logs for each repair iteration
+- **Max Iterations**: Safety limit prevents infinite loops (default: 5)
+- **JSON Export**: Complete repair history saved to file
+- **Multi-Bug Support**: Handles files with sequential bugs
 
 ### Smart Patch Generation
 - **Correctness First**: Always generates patches to fix the bug
 - **Optional Optimization**: Only adds efficiency patches when user requests
 - **Limited Scope**: Max 2 efficiency patches to avoid patch explosion
 
-### Intelligent Scoring
-- Prioritizes working solutions (return code 0)
-- Penalizes new errors or changed error types
-- Rewards minimal code changes
-- Considers error reduction
+### Enhanced Scoring System
+- **Strong Success Reward**: +100 for working patches (vs +50 before)
+- **Error Reduction Bonus**: +20 per error reduced (vs +10 before)
+- **Harsh Failure Penalty**: -50 per new error (vs -10 before)
+- **Minimal Changes**: Rewards small, targeted fixes
 
 ### Safety Features
 - All testing in temporary sandboxes
-- Automatic backup creation (`.bak` files)
+- Automatic backup creation (`.backup` files)
 - Verification after applying patches
 - No modification of original files during testing
+- Max iteration limit prevents infinite loops
+
+## 📁 Project Structure
+
+```
+FixGoblin/
+├── sandbox_runner.py         # Step 1: Isolated code execution
+├── error_parser.py            # Step 2: Error extraction & analysis
+├── patch_generator.py         # Step 3: Fix candidate generation
+├── patch_optimizer.py         # Step 4: Patch testing & selection
+├── autonomous_repair.py       # Step 5: Iterative repair loop ⭐ NEW
+├── fixgoblin.py              # Legacy single-pass interface
+├── user.py                    # Test file (buggy bubble sort)
+├── multi_bug_test.py         # Multi-bug test case
+└── README.md                  # Documentation
+```
+
+## 🧪 Test Examples
+
+### Single Bug Fix
+```bash
+python3 autonomous_repair.py user.py
+# Fixes IndexError in bubble sort (1-2 iterations)
+```
+
+### Multiple Bug Fix
+```bash
+python3 autonomous_repair.py multi_bug_test.py --log repair.json
+# Fixes SyntaxError → IndexError → NameError (3-4 iterations)
+```
+
+### With Optimization
+```bash
+python3 autonomous_repair.py user.py --optimize
+# Generates correctness + efficiency patches
+```
 
 ---
 

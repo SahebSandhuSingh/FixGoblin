@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "final_code": "def bubble_sort(arr):\n    n = len(arr)\n    for i in range(n):\n        for j in range(0, n-i-1):\n            if arr[j] > arr[j+1]:\n                arr[j], arr[j+1] = arr[j+1], arr[j]\n    return arr\n\nnumbers = [64, 34, 25, 12, 22, 11, 90]\nprint(\"Original:\", numbers)\nsorted_numbers = bubble_sort(numbers)\nprint(\"Sorted:\", sorted_numbers)",
+  "iterations": [
+    {
+      "iteration": 1,
+      "error_type": "IndexError",
+      "line_number": 5,
+      "error_message": "list index out of range",
+      "selected_patch_id": "patch_2",
+      "description": "Adjust loop range to prevent out-of-bounds access",
+      "patch_score": 150,
+      "status": "fixed",
+      "returncode": 1,
+      "backup_path": "user.py.backup"
+    },
+    {
+      "iteration": 2,
+      "error_type": null,
+      "line_number": null,
+      "error_message": null,
+      "selected_patch_id": null,
+      "description": "Code executed successfully",
+      "status": "fixed",
+      "returncode": 0
+    }
+  ],
+  "total_iterations": 2,
+  "final_status": "success",
+  "reason": "Code successfully repaired and executes without errors"
+}

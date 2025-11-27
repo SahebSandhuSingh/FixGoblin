@@ -1,0 +1,55 @@
+{
+  "success": true,
+  "final_code": "# Test file with multiple bugs that require multiple iterations\n\ndef calculate_average(numbers):\n    # Bug 1: Missing colon at the end\n    if len(numbers) == 0:\n        return 0\n    \n    total = 0\n    # Bug 2: Will cause IndexError after bug 1 is fixed\n    for i in range(len(numbers) + 1):\n        if i < len(numbers):\n            total += numbers[i]\n    \n    return total / len(numbers)\n\n# Bug 3: Undefined variable (will show after bugs 1 and 2 are fixed)\ndata = [10, 20, 30, 40, 50]\nresult = calculate_average(data)\nprint(f\"Average: {result}\")\ncount = None  # Initialize undefined variable\nprint(f\"Count: {count}\")  # 'count' is not defined\n",
+  "iterations": [
+    {
+      "iteration": 1,
+      "error_type": "SyntaxError",
+      "line_number": 5,
+      "error_message": "expected ':'",
+      "selected_patch_id": "patch_2",
+      "description": "Add missing colon at end of statement",
+      "patch_score": -90,
+      "status": "retrying",
+      "returncode": 1,
+      "backup_path": "multi_bug_test.py.backup"
+    },
+    {
+      "iteration": 2,
+      "error_type": "IndexError",
+      "line_number": 11,
+      "error_message": "list index out of range",
+      "selected_patch_id": "patch_1",
+      "description": "Add boundary check before array access",
+      "patch_score": -35,
+      "status": "retrying",
+      "returncode": 1,
+      "backup_path": "multi_bug_test.py.backup"
+    },
+    {
+      "iteration": 3,
+      "error_type": "NameError",
+      "line_number": 20,
+      "error_message": "name 'count' is not defined. Did you mean: 'round'?",
+      "selected_patch_id": "patch_1",
+      "description": "Initialize 'count' before use",
+      "patch_score": 150,
+      "status": "fixed",
+      "returncode": 1,
+      "backup_path": "multi_bug_test.py.backup"
+    },
+    {
+      "iteration": 4,
+      "error_type": null,
+      "line_number": null,
+      "error_message": null,
+      "selected_patch_id": null,
+      "description": "Code executed successfully",
+      "status": "fixed",
+      "returncode": 0
+    }
+  ],
+  "total_iterations": 4,
+  "final_status": "success",
+  "reason": "Code successfully repaired and executes without errors"
+}

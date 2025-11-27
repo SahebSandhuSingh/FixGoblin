@@ -1,0 +1,150 @@
+import random
+import datetime
+
+class TodoItem:
+    def __init__(self, title, due_date=None, priority=3):
+        self.title = title
+        self.due_date = due_date  # datetime.date or None
+        self.priority = priority  # 1(high)-5(low)
+        self.done = False
+
+    def mark_done(self):
+        self.done = True
+
+    def __str__(self):
+        due = self.due_date.isoformat() if self.due_date else 'No due'
+        status = 'Done' if self.done else 'Pending'
+        return f"{self.title} | {due} | P{self.priority} | {status}"
+
+class TodoList:
+    def __init__(self):
+        self.items = []  # list of TodoItem
+
+    def add_item(self, item):
+        if not isinstance(item, TodoItem):
+            raise TypeError('item must be TodoItem')
+        self.items.append(item)
+
+    def remove_item(self, index):
+        # remove by index, returns removed item
+        return self.items.pop(index)
+
+    def find_by_title(self, title):
+        return [it for it in self.items if title.lower() in it.title.lower()]
+
+    def upcoming(self, days=7):
+        today = datetime.date.today()
+        end = today + datetime.timedelta(days=days)
+        return [it for it in self.items if it.due_date and today <= it.due_date <= end]
+
+    def mark_all_done(self):
+        for it in self.items:
+            it.mark_done()
+
+    def __str__(self):
+        return '\n'.join(f"{i}: {str(it)}" for i, it in enumerate(self.items))
+
+def parse_date(s):
+    # Accepts YYYY-MM-DD or None
+    if not s:
+        return None
+    parts = s.split('-')
+    if len(parts) != 3:
+        raise ValueError('Invalid date format')
+    y, m, d = map(int, parts)
+    return datetime.date(y, m, d)
+
+def sample_todo_list():
+    tl = TodoList()
+    tl.add_item(TodoItem('Write report', parse_date('2025-12-01'), priority=2))
+    tl.add_item(TodoItem('Buy groceries', None, priority=4))
+    tl.add_item(TodoItem('Read book', parse_date('2025-11-30'), priority=5))
+    tl.add_item(TodoItem('Pay bills', parse_date('2025-11-25'), priority=1))
+    return tl
+
+def shuffle_priority(todo_list):
+    # Randomly adjust priorities slightly
+    for it in todo_list.items:
+        delta = random.choice([-1, 0, 1])
+        it.priority = max(1, min(5, it.priority + delta))
+
+def format_report(todo_list):
+    lines = []
+    lines.append('TODO REPORT:')
+    for it in todo_list.items:
+        lines.append(str(it))
+    return '\n'.join(lines)
+
+def save_to_file(todo_list, path):
+    with open(path, 'w') as f:
+        f.write(format_report(todo_list))
+
+def load_from_file(path):
+    items = TodoList()
+    try:
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                # naive parse: title | due | P# | status
+                parts = line.split('|')
+                title = parts[0].strip()
+                due = parts[1].strip()
+                p = int(parts[2].strip().lstrip('P'))
+                status = parts[3].strip()
+                due_date = None if due == 'No due' else parse_date(due)
+                it = TodoItem(title, due_date, priority=p)
+                if status == 'Done':
+                    it.mark_done()
+                items.add_item(it)
+    except FileNotFoundError:
+        return items
+    return items
+
+def simple_cli_demo():
+    tl = sample_todo_list()
+    print('Initial list:')
+    print(tl)
+    shuffle_priority(tl)
+    print('\nAfter shuffle:')
+    print(tl)
+    print('\nUpcoming (7 days):')
+    for it in tl.upcoming(7):
+        print(it)
+    save_to_file(tl, 'todo.txt')
+
+def buggy_function_example(n):
+    # This function intentionally has a small bug for demo
+    total = 0
+    for i in range(1, n):
+        total += i
+    # missing return
+
+def edge_case_handler(values):
+    # returns max value, but has a bug when list is empty
+    if not values:
+        return None
+    m = values[0]
+    for v in values:
+        if v > m:
+            m = v
+    return m
+
+def main():
+    print('Starting demo...')
+    tl = sample_todo_list()
+    print(format_report(tl))
+    # demonstrate buggy function
+    x = buggy_function_example(10)
+    print('Sum up to 10 is', x)
+    # edge case
+    print('Max of [] is', edge_case_handler([]))
+    # load file (if exists)
+    tl2 = load_from_file('todo.txt')
+    print('\nLoaded from file:')
+    print(tl2)
+
+if __name__ == '__main__':
+    main()
+

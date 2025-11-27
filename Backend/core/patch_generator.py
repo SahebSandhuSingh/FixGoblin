@@ -49,6 +49,8 @@ def generate_patch_candidates(error_data: Dict[str, Any], user_code: str, optimi
         correctness_patches = _generate_type_error_patches(error_data, user_code)
     elif error_type == "AttributeError":
         correctness_patches = _generate_attribute_error_patches(error_data, user_code)
+    elif error_type == "LogicalError":
+        correctness_patches = _generate_logical_error_patches(error_data, user_code)
     
     # Mark all correctness patches
     for patch in correctness_patches:
@@ -713,3 +715,109 @@ if __name__ == "__main__":
     print("\n" + "=" * 70)
     print("✅ Patch generation complete!")
     print("=" * 70)
+
+
+# ============================================================
+#  LOGICAL ERROR PATCHES
+# ============================================================
+
+def _generate_logical_error_patches(error_data: Dict[str, Any], user_code: str) -> List[Dict[str, Any]]:
+    """
+    Generate patches for logical errors (missing return statements, off-by-one, etc.).
+    """
+    patches = []
+    
+    suggested_fix = error_data.get('suggested_fix', {})
+    logical_issue = error_data.get('logical_issue', {})
+    
+    if logical_issue.get('type') == 'missing_return_statement':
+        func_name = logical_issue.get('function_name')
+        var_to_return = suggested_fix.get('variable_to_return', 'result')
+        
+        # Find the function and add return statement
+        lines = user_code.split('\n')
+        func_start = None
+        func_end = None
+        
+        # Find function boundaries
+        for i, line in enumerate(lines):
+            if f'def {func_name}(' in line:
+                func_start = i
+            elif func_start is not None and func_end is None:
+                # Find end of function (next non-indented line or another def)
+                if line and not line[0].isspace() and i > func_start:
+                    func_end = i
+                    break
+        
+        if func_end is None:
+            func_end = len(lines)
+        
+        # Insert return statement before function end
+        # Find last non-empty line with indentation
+        insert_line = func_end - 1
+        while insert_line > func_start and not lines[insert_line].strip():
+            insert_line -= 1
+        
+        # Get indentation of function body
+        indent = ''
+        for i in range(func_start + 1, insert_line + 1):
+            if lines[i].strip():
+                indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+                break
+        
+        # Create patched version
+        patched_lines = lines.copy()
+        patched_lines.insert(insert_line + 1, f"{indent}return {var_to_return}")
+        patched_code = '\n'.join(patched_lines)
+        
+        patches.append({
+            'id': 'logical_patch_1',
+            'description': f"Add missing 'return {var_to_return}' statement in {func_name}()",
+            'patched_code': patched_code,
+            'diff': _generate_diff(user_code, patched_code),
+            'patch_type': 'correctness'
+        })
+    
+    elif logical_issue.get('type') == 'potential_off_by_one':
+        func_name = logical_issue.get('function_name')
+        line_num = logical_issue.get('line_number')
+        
+        # Fix range(1, n) to range(1, n+1)
+        lines = user_code.split('\n')
+        if line_num and line_num <= len(lines):
+            target_line = lines[line_num - 1]
+            # Find range(1, variable_name) and change to range(1, variable_name + 1)
+            import re
+            pattern = r'range\(1,\s*(\w+)\)'
+            match = re.search(pattern, target_line)
+            if match:
+                var_name = match.group(1)
+                new_line = target_line.replace(f'range(1, {var_name})', f'range(1, {var_name} + 1)')
+                
+                patched_lines = lines.copy()
+                patched_lines[line_num - 1] = new_line
+                patched_code = '\n'.join(patched_lines)
+                
+                patches.append({
+                    'id': 'logical_patch_1',
+                    'description': f"Fix off-by-one error: change range(1, {var_name}) to range(1, {var_name} + 1) in {func_name}()",
+                    'patched_code': patched_code,
+                    'diff': _generate_diff(user_code, patched_code),
+                    'patch_type': 'correctness'
+                })
+    
+    elif logical_issue.get('type') == 'output_mismatch':
+        # For output mismatches detected in stdout, try to find related function
+        expected = logical_issue.get('expected')
+        actual = logical_issue.get('actual')
+        
+        patches.append({
+            'id': 'logical_patch_info',
+            'description': f"Output mismatch detected: expected {expected}, got {actual}. Manual review recommended.",
+            'patched_code': user_code,
+            'diff': '# No automatic fix available for output mismatch',
+            'patch_type': 'correctness'
+        })
+    
+    return patches
+

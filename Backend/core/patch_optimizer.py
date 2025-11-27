@@ -17,6 +17,7 @@ def select_best_patch(
 ) -> Optional[Dict[str, Any]]:
     """
     Evaluate all patch candidates and select the best one.
+    DOES NOT modify any files - only evaluates in-memory.
     
     Args:
         patch_candidates: List of patch dictionaries from patch generator
@@ -138,70 +139,71 @@ def _evaluate_patch(
         Dictionary with score breakdown
     """
     
-    # Run patched code
+    # Run patched code (IN-MEMORY ONLY - no file modification)
     patched_result = _run_code_in_sandbox(patch['patched_code'], run_in_sandbox)
     
     # Initialize score breakdown
     score_info = {
         "returncode": patched_result['returncode'],
         "success": patched_result['returncode'] == 0,
-        "error_reduction": 0,
-        "no_errors": 0,
+        "no_errors_bonus": 0,
+        "error_reduction_bonus": 0,
         "new_errors_penalty": 0,
-        "code_change_penalty": 0,
+        "diff_size_penalty": 0,
         "total_score": 0
     }
     
-    # SCORING CRITERIA
+    # SCORING CRITERIA (Updated scoring system)
     
-    # 1. No errors after patch (highest priority)
+    # 1. No errors after patch (HIGHEST PRIORITY: +100 points)
     if patched_result['returncode'] == 0:
-        score_info["no_errors"] = 50
-        print(f"      ✓ No errors: +50")
+        score_info["no_errors_bonus"] = 100
+        print(f"      ✓ No errors (returncode 0): +100")
     
-    # 2. Error reduction (compare error counts)
+    # 2. Error reduction (compare error counts: +20 per error reduced)
     baseline_errors = _count_error_lines(baseline_result['stderr'])
     patched_errors = _count_error_lines(patched_result['stderr'])
     
     if patched_errors < baseline_errors:
         reduction = baseline_errors - patched_errors
-        score_info["error_reduction"] = reduction * 10
-        print(f"      ✓ Reduced {reduction} errors: +{reduction * 10}")
+        score_info["error_reduction_bonus"] = reduction * 20
+        print(f"      ✓ Reduced {reduction} errors: +{reduction * 20}")
     elif patched_errors > baseline_errors:
         increase = patched_errors - baseline_errors
-        score_info["new_errors_penalty"] = -increase * 10
-        print(f"      ✗ Introduced {increase} new errors: -{increase * 10}")
+        score_info["new_errors_penalty"] = -increase * 50
+        print(f"      ✗ Introduced {increase} new errors: -{increase * 50}")
     
-    # 3. Check for new error types
+    # 3. Check for new error types (severe penalty)
     baseline_error_type = _extract_error_type(baseline_result['stderr'])
     patched_error_type = _extract_error_type(patched_result['stderr'])
     
     if (patched_error_type and baseline_error_type and 
         patched_error_type != baseline_error_type):
-        score_info["new_errors_penalty"] -= 15
-        print(f"      ✗ Changed error type ({baseline_error_type} → {patched_error_type}): -15")
+        score_info["new_errors_penalty"] -= 50
+        print(f"      ✗ Changed error type ({baseline_error_type} → {patched_error_type}): -50")
     
-    # 4. Minimal code changes (prefer smaller diffs)
+    # 4. Diff size penalty (prefer minimal changes: -10 per extra line after 3)
     lines_changed = _count_diff_lines(patch['diff'])
-    if lines_changed > 5:
-        penalty = (lines_changed - 5) * 2
-        score_info["code_change_penalty"] = -penalty
-        print(f"      ✗ Large change ({lines_changed} lines): -{penalty}")
+    if lines_changed > 3:
+        penalty = (lines_changed - 3) * 10
+        score_info["diff_size_penalty"] = -penalty
+        print(f"      ✗ Large diff ({lines_changed} lines): -{penalty}")
     elif lines_changed <= 2:
-        score_info["code_change_penalty"] = 5
-        print(f"      ✓ Minimal change ({lines_changed} lines): +5")
+        bonus = 10
+        score_info["diff_size_penalty"] = bonus
+        print(f"      ✓ Minimal change ({lines_changed} lines): +{bonus}")
     
     # 5. Bonus for stdout output (code ran far enough to produce output)
     if patched_result['stdout'] and not baseline_result['stdout']:
-        score_info["output_bonus"] = 10
-        print(f"      ✓ Generated output: +10")
+        score_info["output_bonus"] = 15
+        print(f"      ✓ Generated output: +15")
     
     # Calculate total score
     score_info["total_score"] = sum([
-        score_info["no_errors"],
-        score_info["error_reduction"],
+        score_info["no_errors_bonus"],
+        score_info["error_reduction_bonus"],
         score_info["new_errors_penalty"],
-        score_info["code_change_penalty"],
+        score_info["diff_size_penalty"],
         score_info.get("output_bonus", 0)
     ])
     
@@ -264,43 +266,82 @@ def _count_diff_lines(diff: str) -> int:
 
 
 # ============================================================
-#  ADDITIONAL UTILITY: Apply Best Patch to File
+#  FILE APPLICATION UTILITY
 # ============================================================
 
-def apply_patch_to_file(patch: Dict[str, Any], file_path: str, backup: bool = True) -> bool:
+def apply_patch_to_file(best_patch: Dict[str, Any], file_path: str, auto_apply: bool = True) -> Dict[str, Any]:
     """
-    Apply the selected patch to the actual file.
+    Apply the selected patch to the actual file (or return in-memory result).
+    
+    Safety Rules:
+    - NEVER modifies files during optimization loop
+    - Only writes to file AFTER best patch is chosen
+    - Creates backup before any modification
     
     Args:
-        patch: Patch dictionary with 'patched_code'
+        best_patch: Best patch dictionary selected by optimizer
         file_path: Path to file to patch
-        backup: Whether to create a backup file
+        auto_apply: If False, only return patched code without modifying file.
+                   If True, write to file and create backup.
         
     Returns:
-        True if successful, False otherwise
+        Dictionary containing:
+            - best_patch: The patch object
+            - patched_code: The patched code (always returned)
+            - applied: True if file was modified, False otherwise
+            - backup_path: Path to backup file (if auto_apply=True)
+            - original_path: Path to original file
     """
+    
+    result = {
+        "best_patch": best_patch,
+        "patched_code": best_patch['patched_code'],
+        "applied": False,
+        "backup_path": None,
+        "original_path": file_path
+    }
+    
+    # If auto_apply is False, return patched code without touching files
+    if not auto_apply:
+        print("\n📋 Patch generated (auto_apply=False)")
+        print("   File NOT modified. Use auto_apply=True to apply changes.")
+        return result
+    
+    # auto_apply is True - proceed with file modification
     try:
         file_path_obj = pathlib.Path(file_path)
         
-        # Create backup if requested
-        if backup:
-            backup_path = file_path_obj.with_suffix(file_path_obj.suffix + '.bak')
-            with open(file_path, 'r') as f:
-                backup_content = f.read()
-            with open(backup_path, 'w') as f:
-                f.write(backup_content)
-            print(f"📦 Backup created: {backup_path}")
+        # Verify file exists
+        if not file_path_obj.exists():
+            print(f"\n❌ Error: File '{file_path}' not found.")
+            return result
         
-        # Write patched code
-        with open(file_path, 'w') as f:
-            f.write(patch['patched_code'])
+        # Create backup file
+        backup_path = file_path_obj.with_suffix(file_path_obj.suffix + '.backup')
         
+        # Read original content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            original_content = f.read()
+        
+        # Write backup
+        with open(backup_path, 'w', encoding='utf-8') as f:
+            f.write(original_content)
+        
+        result['backup_path'] = str(backup_path)
+        print(f"\n📦 Backup created: {backup_path}")
+        
+        # Write patched code to original file
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(best_patch['patched_code'])
+        
+        result['applied'] = True
         print(f"✅ Patch applied to: {file_path}")
-        return True
+        
+        return result
         
     except Exception as e:
-        print(f"❌ Failed to apply patch: {e}")
-        return False
+        print(f"\n❌ Failed to apply patch: {e}")
+        return result
 
 
 # ============================================================
