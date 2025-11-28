@@ -1,0 +1,15 @@
+# FixGoblin - Production Dependencies
+
+# Core functionality uses Python standard library only:
+# - ast (Abstract Syntax Trees)
+# - re (Regular Expressions)
+# - subprocess (Process Management)
+# - pathlib (File Path Operations)
+# - json (Data serialization)
+# - os, sys (System operations)
+
+# Optional: For Web UI
+streamlit>=1.28.0
+
+# No external dependencies required for core CLI functionality
+# All features work completely offline

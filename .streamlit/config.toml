@@ -1,0 +1,11 @@
+[theme]
+# Force dark theme - users cannot change this
+primaryColor = "#5865F2"
+backgroundColor = "#0B0F14"
+secondaryBackgroundColor = "#1A1F29"
+textColor = "#FFFFFF"
+font = "sans serif"
+
+[browser]
+# Disable theme switching
+gatherUsageStats = false

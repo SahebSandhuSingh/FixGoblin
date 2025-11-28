@@ -11,15 +11,15 @@ import os
 import time
 import pathlib
 from typing import Dict, List, Any, Optional
-from core.sandbox_runner import run_in_sandbox
-from core.error_parser import parse_error
-from core.patch_generator import generate_patch_candidates
-from core.patch_optimizer import select_best_patch, apply_patch_to_file
-from core.logical_validator import validate_logic, format_logical_error
-from core.semantic_detector import detect_semantic_errors, suggest_fixes_for_semantic_errors
-from core.final_report import generate_final_report, collect_repair_context
-from core.logical_analyzer import analyze_logic
-from core.test_case_validator import TestCaseValidator, TestCase, parse_test_cases_from_comments
+from sandbox_runner import run_in_sandbox
+from error_parser import parse_error
+from patch_generator import generate_patch_candidates
+from patch_optimizer import select_best_patch, apply_patch_to_file
+from logical_validator import validate_logic, format_logical_error
+from semantic_detector import detect_semantic_errors, suggest_fixes_for_semantic_errors
+from final_report import generate_final_report, collect_repair_context
+from logical_analyzer import analyze_logic
+from test_case_validator import TestCaseValidator, TestCase, parse_test_cases_from_comments
 
 
 def autonomous_repair(
