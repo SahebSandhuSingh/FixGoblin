@@ -49,3 +49,11 @@ tmp/
 # Streamlit cache (keep config)
 .streamlit/cache/
 .streamlit/secrets.toml
+
+# Docker
+*.tar
+*.tar.gz
+
+# Workspace (user files)
+workspace/*
+!workspace/README.md

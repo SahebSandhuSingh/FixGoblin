@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  fixgoblin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fixgoblin
+    ports:
+      - "8501:8501"
+    volumes:
+      # Mount workspace for code files
+      - ./workspace:/workspace
+      # Mount local code for development (optional)
+      # - .:/app
+    environment:
+      - FIXGOBLIN_TIMEOUT=10
+      - FIXGOBLIN_MEMORY_LIMIT=512
+      - FIXGOBLIN_DEBUG=0
+    restart: unless-stopped
+    networks:
+      - fixgoblin-network
+
+networks:
+  fixgoblin-network:
+    driver: bridge

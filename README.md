@@ -136,6 +136,34 @@ python fixgoblin.py --help
 
 The core system requires only Python standard library. External dependencies (Streamlit) are only needed for the web interface.
 
+## Docker Installation (Recommended)
+
+Run FixGoblin in an isolated container with all language runtimes pre-installed:
+
+```bash
+# Using Docker Compose (easiest)
+docker-compose up -d
+
+# Access web UI at http://localhost:8501
+
+# Or build and run manually
+docker build -t fixgoblin .
+docker run -d -p 8501:8501 fixgoblin
+```
+
+**Docker CLI Usage:**
+```bash
+# Repair a file using Docker
+docker run -v $(pwd)/workspace:/workspace fixgoblin \
+    python fixgoblin.py /workspace/your_code.py
+
+# With options
+docker run -v $(pwd)/workspace:/workspace fixgoblin \
+    python fixgoblin.py /workspace/code.py --max-iterations 10 --log /workspace/log.json
+```
+
+See **[DOCKER.md](DOCKER.md)** for complete Docker documentation.
+
 ## Usage
 
 ### Command-Line Interface
