@@ -925,6 +925,98 @@ if run_button:
             else:
                 st.info("ℹ️ No error information available")
             
+            # Section 2.5: Logical Analysis Results (NEW)
+            if result.get('logical_analysis'):
+                st.markdown('<div class="section-header">🧠 Logical Analysis Results</div>', unsafe_allow_html=True)
+                
+                logical_analysis = result['logical_analysis']
+                logical_errors = logical_analysis.get('logical_errors', [])
+                
+                if logical_errors:
+                    st.markdown(f"**Detected {len(logical_errors)} Logical Issue(s)** via deterministic AST/CFG/DFA analysis:")
+                    
+                    for idx, err in enumerate(logical_errors, 1):
+                        severity = err.get('severity', 'medium')
+                        severity_colors = {
+                            'low': '🟢',
+                            'medium': '🟡',
+                            'high': '🔴',
+                            'critical': '🔴'
+                        }
+                        severity_emoji = severity_colors.get(severity, '🟡')
+                        
+                        with st.expander(f"{severity_emoji} Issue {idx}: {err.get('type', 'Unknown')} (Line {err.get('line', 'N/A')})", expanded=(idx==1)):
+                            err_col1, err_col2 = st.columns([3, 1])
+                            
+                            with err_col1:
+                                st.markdown(f"**Type:** `{err.get('type', 'unknown')}`")
+                                st.markdown(f"**Line:** {err.get('line', 'N/A')}")
+                                st.markdown(f"**Message:** {err.get('message', 'N/A')}")
+                                
+                                if err.get('suggested_fix'):
+                                    st.markdown("**💡 Suggested Fix:**")
+                                    st.info(err['suggested_fix'])
+                            
+                            with err_col2:
+                                st.metric("Severity", severity.upper())
+                                st.metric("Confidence", f"{err.get('confidence', 0)*100:.0f}%")
+                    
+                    # Show CFG/DFA metadata
+                    with st.expander("🔍 Analysis Details"):
+                        st.markdown(f"**Control Flow Issues:** {len(logical_analysis.get('control_flow_issues', []))}")
+                        st.markdown(f"**Data Flow Issues:** {len(logical_analysis.get('data_flow_issues', []))}")
+                        st.markdown(f"**AST Valid:** {'✅' if logical_analysis.get('ast_valid') else '❌'}")
+                        st.markdown(f"**Overall Confidence:** {logical_analysis.get('confidence_score', 0):.2%}")
+                else:
+                    st.success("✅ No logical issues detected via AST/CFG/DFA analysis!")
+            
+            # Section 2.6: Test Case Results (NEW)
+            if result.get('test_results'):
+                st.markdown('<div class="section-header">🧪 Test Case Results</div>', unsafe_allow_html=True)
+                
+                test_results = result['test_results']
+                passed_tests = sum(1 for t in test_results if t.get('passed', False))
+                total_tests = len(test_results)
+                pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
+                
+                # Show summary metrics
+                test_col1, test_col2, test_col3 = st.columns(3)
+                
+                with test_col1:
+                    st.metric("Total Tests", total_tests)
+                
+                with test_col2:
+                    st.metric("Passed", passed_tests, delta=f"{pass_rate:.0f}%")
+                
+                with test_col3:
+                    st.metric("Failed", total_tests - passed_tests)
+                
+                # Show individual test results
+                for idx, test in enumerate(test_results, 1):
+                    test_status = "✅ PASS" if test.get('passed', False) else "❌ FAIL"
+                    with st.expander(f"{test_status} - Test #{test.get('test_id', idx)}: {test.get('description', 'Unnamed')}", expanded=(not test.get('passed', False))):
+                        test_col_a, test_col_b = st.columns(2)
+                        
+                        with test_col_a:
+                            st.markdown("**Input:**")
+                            st.code(str(test.get('input', 'N/A')), language='python')
+                            
+                            st.markdown("**Expected Output:**")
+                            st.code(str(test.get('expected_output', 'N/A')), language='python')
+                        
+                        with test_col_b:
+                            st.markdown("**Actual Output:**")
+                            if test.get('passed', False):
+                                st.success(str(test.get('actual_output', 'N/A')))
+                            else:
+                                st.error(str(test.get('actual_output', 'N/A')))
+                            
+                            st.markdown(f"**Execution Time:** {test.get('execution_time', 0):.3f}s")
+                            
+                            if test.get('error_message'):
+                                st.markdown("**Error:**")
+                                st.code(test['error_message'], language='text')
+            
             # Section 3: Applied Patches
             st.markdown('<div class="section-header">🔧 Applied Patches</div>', unsafe_allow_html=True)
             
@@ -935,22 +1027,123 @@ if run_button:
                     st.markdown(f"**Total Patches Applied:** {len(patches_applied)}")
                     
                     for idx, patch_info in enumerate(patches_applied, 1):
-                        with st.expander(f"📦 Patch {idx}: {patch_info.get('selected_patch_id', 'unknown')}", expanded=(idx==1)):
+                        patch_id = patch_info.get('selected_patch_id', 'unknown')
+                        with st.expander(f"📦 Patch {idx}: {patch_id}", expanded=(idx==1)):
+                            # Header with Score
                             patch_col1, patch_col2 = st.columns([3, 1])
                             
                             with patch_col1:
-                                st.markdown(f"**Patch ID:** `{patch_info.get('selected_patch_id', 'unknown')}`")
-                                st.markdown(f"**Description:** {patch_info.get('description', 'N/A')}")
+                                st.markdown(f"### Patch ID: `{patch_id}`")
+                                description = patch_info.get('description', 'N/A')
+                                st.markdown(f"**Description:** {description}")
                             
                             with patch_col2:
                                 score = patch_info.get('patch_score', 0)
-                                st.metric("Score", f"{score}", delta="Applied")
+                                st.metric("Score", f"{score}", delta="✅ Applied")
                             
-                            # Show iteration details
-                            st.markdown("**Changes Made:**")
-                            st.markdown(f"- Error Type: {patch_info.get('error_type', 'N/A')}")
-                            st.markdown(f"- Line: {patch_info.get('line_number', 'N/A')}")
-                            st.markdown(f"- Status: {patch_info.get('status', 'N/A').upper()}")
+                            st.divider()
+                            
+                            # Detailed Information Section
+                            st.markdown("### 📋 Changes Made:")
+                            
+                            detail_col1, detail_col2, detail_col3 = st.columns(3)
+                            
+                            with detail_col1:
+                                error_type = patch_info.get('error_type', 'N/A')
+                                st.markdown(f"**Error Type:**")
+                                st.code(error_type)
+                            
+                            with detail_col2:
+                                line_num = patch_info.get('line_number', 'N/A')
+                                st.markdown(f"**Line Number:**")
+                                st.code(str(line_num))
+                            
+                            with detail_col3:
+                                status = patch_info.get('status', 'N/A').upper()
+                                st.markdown(f"**Status:**")
+                                if status == 'FIXED':
+                                    st.success(status)
+                                else:
+                                    st.info(status)
+                            
+                            # Error Message
+                            if patch_info.get('error_message'):
+                                st.markdown("**🐛 Original Error Message:**")
+                                st.code(patch_info['error_message'], language='text')
+                            
+                            # Patch Strategy
+                            if patch_info.get('patch_strategy'):
+                                st.markdown("**🎯 Patch Strategy:**")
+                                st.info(patch_info['patch_strategy'])
+                            
+                            # All Candidate Patches
+                            if patch_info.get('patch_candidates'):
+                                st.markdown("**🔍 All Candidate Patches Generated:**")
+                                candidates = patch_info['patch_candidates']
+                                st.markdown(f"*Generated {len(candidates)} candidate patch(es), selected best one*")
+                                
+                                for cand_idx, candidate in enumerate(candidates, 1):
+                                    selected = candidate.get('patch_id') == patch_id
+                                    status_icon = "✅ SELECTED" if selected else "⚪ Not Selected"
+                                    
+                                    with st.expander(f"{status_icon} - Candidate {cand_idx}: {candidate.get('patch_id', 'unknown')}", expanded=selected):
+                                        cand_col1, cand_col2 = st.columns([2, 1])
+                                        
+                                        with cand_col1:
+                                            st.markdown(f"**Patch ID:** `{candidate.get('patch_id', 'N/A')}`")
+                                            st.markdown(f"**Description:** {candidate.get('description', 'N/A')}")
+                                            st.markdown(f"**Category:** {candidate.get('category', 'N/A')}")
+                                        
+                                        with cand_col2:
+                                            cand_score = candidate.get('confidence', 0)
+                                            st.metric("Confidence", f"{cand_score:.2f}")
+                                            st.metric("Priority", candidate.get('priority', 'N/A'))
+                                        
+                                        # Show the actual patch diff
+                                        if candidate.get('patch_diff'):
+                                            st.markdown("**📝 Patch Code:**")
+                                            st.code(candidate['patch_diff'], language='diff')
+                                        
+                                        # Reasoning
+                                        if candidate.get('reasoning'):
+                                            st.markdown("**💭 Reasoning:**")
+                                            st.info(candidate['reasoning'])
+                            
+                            # Iteration metadata
+                            st.divider()
+                            st.markdown("### 🔄 Iteration Metadata:")
+                            
+                            meta_col1, meta_col2, meta_col3 = st.columns(3)
+                            
+                            with meta_col1:
+                                iteration_num = patch_info.get('iteration', idx)
+                                st.markdown(f"**Iteration:** {iteration_num}")
+                            
+                            with meta_col2:
+                                timestamp = patch_info.get('timestamp', 'N/A')
+                                st.markdown(f"**Timestamp:** {timestamp}")
+                            
+                            with meta_col3:
+                                execution_time = patch_info.get('execution_time', 0)
+                                st.markdown(f"**Time Taken:** {execution_time:.3f}s")
+                            
+                            # Verification Result
+                            if patch_info.get('verification_result'):
+                                st.markdown("**✅ Verification Result:**")
+                                verification = patch_info['verification_result']
+                                if verification.get('success'):
+                                    st.success(f"✅ Patch verified successfully! {verification.get('message', '')}")
+                                else:
+                                    st.error(f"❌ Patch verification failed: {verification.get('message', '')}")
+                            
+                            # Output after patch
+                            if patch_info.get('stdout'):
+                                st.markdown("**📤 Output After Applying Patch:**")
+                                st.code(patch_info['stdout'], language='text')
+                            
+                            if patch_info.get('stderr') and patch_info['stderr'].strip():
+                                st.markdown("**⚠️ Stderr After Applying Patch:**")
+                                st.code(patch_info['stderr'], language='text')
                 else:
                     st.info("✅ No patches needed - code was already correct!")
             else:
@@ -1016,32 +1209,66 @@ if run_button:
             
             # Action buttons
             st.divider()
+            
+            # Initialize session state for toggles
+            if 'show_fixed_code' not in st.session_state:
+                st.session_state.show_fixed_code = False
+            if 'show_json_report' not in st.session_state:
+                st.session_state.show_json_report = False
+            
             action_col1, action_col2, action_col3, action_col4 = st.columns(4)
             
             with action_col1:
-                if st.button("💾 Download Fixed Code", use_container_width=True):
-                    # Provide download button for fixed code
-                    st.download_button(
-                        label="⬇️ Download",
-                        data=st.session_state.final_code,
-                        file_name="fixed_code.py",
-                        mime="text/plain"
-                    )
+                # Direct download button - no nested button needed
+                download_ext = file_extension if file_extension else 'py'
+                st.download_button(
+                    label="💾 Download Fixed Code",
+                    data=st.session_state.final_code,
+                    file_name=f"fixed_code.{download_ext}",
+                    mime="text/plain",
+                    use_container_width=True
+                )
             
             with action_col2:
-                # Copy to clipboard using text area (user can copy manually)
-                if st.button("📋 View Fixed Code", use_container_width=True):
-                    st.text_area("Fixed Code (Copy this)", st.session_state.final_code, height=200)
+                # Toggle button for viewing fixed code
+                view_code_label = "📋 Hide Fixed Code" if st.session_state.show_fixed_code else "📋 View Fixed Code"
+                if st.button(view_code_label, use_container_width=True, key="btn_view_code"):
+                    st.session_state.show_fixed_code = not st.session_state.show_fixed_code
+                    st.rerun()
             
             with action_col3:
-                if st.button("📄 View JSON Report", use_container_width=True):
-                    import json
-                    st.json(result)
+                # Toggle button for viewing JSON report
+                view_json_label = "📄 Hide JSON Report" if st.session_state.show_json_report else "📄 View JSON Report"
+                if st.button(view_json_label, use_container_width=True, key="btn_view_json"):
+                    st.session_state.show_json_report = not st.session_state.show_json_report
+                    st.rerun()
             
             with action_col4:
-                if st.button("🔄 Clear Results", use_container_width=True):
-                    st.session_state.repair_result = None
+                if st.button("🔄 Clear Results", use_container_width=True, key="btn_clear"):
+                    # Clear all session state related to results
+                    keys_to_clear = ['repair_result', 'show_fixed_code', 'show_json_report', 
+                                     'execution_time', 'original_code', 'final_code']
+                    for key in keys_to_clear:
+                        if key in st.session_state:
+                            del st.session_state[key]
                     st.rerun()
+            
+            # Show fixed code if toggled
+            if st.session_state.show_fixed_code:
+                st.divider()
+                st.markdown("### 📋 Fixed Code (Copy Below)")
+                # Determine language for syntax highlighting
+                lang_map = {'py': 'python', 'cpp': 'cpp', 'cc': 'cpp', 'cxx': 'cpp', 
+                           'c': 'c', 'java': 'java', 'js': 'javascript', 'go': 'go'}
+                display_lang = lang_map.get(file_extension if file_extension else 'py', 'python')
+                st.code(st.session_state.final_code, language=display_lang, line_numbers=True)
+            
+            # Show JSON report if toggled
+            if st.session_state.show_json_report:
+                st.divider()
+                st.markdown("### 📄 JSON Report")
+                import json
+                st.json(result)
             
             # Configuration used
             st.divider()

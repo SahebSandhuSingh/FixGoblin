@@ -62,6 +62,8 @@ def generate_patch_candidates(error_data: Dict[str, Any], user_code: str, optimi
         correctness_patches = _generate_attribute_error_patches(error_data, user_code)
     elif error_type == "UnboundLocalError":
         correctness_patches = _generate_unbound_local_patches(error_data, user_code)
+    elif error_type == "KeyError":
+        correctness_patches = _generate_key_error_patches(error_data, user_code)
     elif error_type == "LogicalError":
         correctness_patches = _generate_logical_error_patches(error_data, user_code)
     
@@ -904,6 +906,90 @@ if __name__ == "__main__":
 # ============================================================
 #  LOGICAL ERROR PATCHES
 # ============================================================
+
+def _generate_key_error_patches(error_data: Dict[str, Any], user_code: str) -> List[Dict[str, Any]]:
+    """
+    Generate patches for KeyError - typically wrong dictionary key access.
+    
+    Handles patterns like:
+    - if n in memo: return memo[0]  # Should be memo[n]
+    """
+    patches = []
+    line_num = error_data.get("line_number")
+    error_msg = error_data.get("error_message", "")
+    
+    lines = user_code.split('\n')
+    
+    if not line_num or line_num > len(lines):
+        return patches
+    
+    # Try to find context - look for 'if var in dict' pattern before this line
+    target_line = lines[line_num - 1]
+    
+    # Look backwards for 'if ... in ...:' pattern
+    checked_var = None
+    container_var = None
+    
+    for i in range(max(0, line_num - 10), line_num):
+        prev_line = lines[i]
+        # Pattern: if var in dict:
+        import re
+        match = re.search(r'if\s+(\w+)\s+in\s+(\w+)\s*:', prev_line)
+        if match:
+            checked_var = match.group(1)
+            container_var = match.group(2)
+            break
+    
+    if checked_var and container_var:
+        # Check if target line has wrong key access
+        # Pattern: return dict[wrong_key] or var = dict[wrong_key]
+        wrong_key_match = re.search(rf'{container_var}\[(\w+|\d+)\]', target_line)
+        if wrong_key_match:
+            wrong_key = wrong_key_match.group(1)
+            
+            # If wrong_key != checked_var, we found the bug!
+            if wrong_key != checked_var:
+                # Generate patch
+                new_line = target_line.replace(f'{container_var}[{wrong_key}]', f'{container_var}[{checked_var}]')
+                
+                patched_lines = lines.copy()
+                patched_lines[line_num - 1] = new_line
+                patched_code = '\n'.join(patched_lines)
+                
+                patches.append({
+                    'id': 'keyerror_patch_1',
+                    'description': f"Fix KeyError: change '{container_var}[{wrong_key}]' to '{container_var}[{checked_var}]' (use checked variable)",
+                    'patched_code': patched_code,
+                    'diff': _generate_diff(user_code, patched_code),
+                    'patch_type': 'correctness',
+                    'confidence': 0.95
+                })
+    
+    # Fallback: Add .get() with default
+    if not patches and '[' in target_line:
+        # Add a safer version using .get()
+        new_line = target_line
+        for match in re.finditer(r'(\w+)\[([^\]]+)\]', target_line):
+            dict_name = match.group(1)
+            key = match.group(2)
+            new_line = new_line.replace(f'{dict_name}[{key}]', f'{dict_name}.get({key}, None)')
+        
+        if new_line != target_line:
+            patched_lines = lines.copy()
+            patched_lines[line_num - 1] = new_line
+            patched_code = '\n'.join(patched_lines)
+            
+            patches.append({
+                'id': 'keyerror_patch_2',
+                'description': f"Fix KeyError: use .get() method with default value",
+                'patched_code': patched_code,
+                'diff': _generate_diff(user_code, patched_code),
+                'patch_type': 'correctness',
+                'confidence': 0.7
+            })
+    
+    return patches
+
 
 def _generate_logical_error_patches(error_data: Dict[str, Any], user_code: str) -> List[Dict[str, Any]]:
     """

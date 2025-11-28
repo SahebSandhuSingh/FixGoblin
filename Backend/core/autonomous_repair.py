@@ -16,13 +16,18 @@ from core.error_parser import parse_error
 from core.patch_generator import generate_patch_candidates
 from core.patch_optimizer import select_best_patch, apply_patch_to_file
 from core.logical_validator import validate_logic, format_logical_error
+from core.semantic_detector import detect_semantic_errors, suggest_fixes_for_semantic_errors
 from core.final_report import generate_final_report, collect_repair_context
+from core.logical_analyzer import analyze_logic
+from core.test_case_validator import TestCaseValidator, TestCase, parse_test_cases_from_comments
 
 
 def autonomous_repair(
     file_path: str, 
     max_iterations: int = 5, 
-    optimize_efficiency: bool = False
+    optimize_efficiency: bool = False,
+    test_cases: List[TestCase] = None,
+    enable_logical_analysis: bool = True
 ) -> Dict[str, Any]:
     """
     Autonomous repair loop that iteratively fixes code.
@@ -30,14 +35,17 @@ def autonomous_repair(
     Algorithm:
         1. Load code from file
         2. Run in sandbox
-        3. If success → STOP
-        4. If error → Parse → Generate patches → Select best → Apply
-        5. Repeat until fixed or max_iterations reached
+        3. If test cases provided, run tests and trigger logical analysis on failures
+        4. If success → Check logic/semantics → STOP or fix
+        5. If error → Parse → Generate patches → Select best → Apply
+        6. Repeat until fixed or max_iterations reached
     
     Args:
         file_path: Path to the code file to repair
         max_iterations: Maximum number of repair attempts (default: 5)
         optimize_efficiency: If True, also generate efficiency patches
+        test_cases: Optional list of test cases for logical analysis
+        enable_logical_analysis: Enable deterministic logical error detection (AST/CFG/DFA)
         
     Returns:
         Dictionary containing:
@@ -46,6 +54,8 @@ def autonomous_repair(
             - iterations: List of iteration logs
             - total_iterations: Number of iterations performed
             - final_status: "success", "failed", or "max_iterations_reached"
+            - test_results: Test case results if provided
+            - logical_analysis: Logical error analysis results if enabled
     """
     
     print("=" * 80)
@@ -83,6 +93,27 @@ def autonomous_repair(
     # Initialize tracking
     iteration_logs: List[Dict[str, Any]] = []
     current_iteration = 0
+    test_results = None
+    logical_analysis_results = None
+    
+    # Detect language from file extension
+    file_ext = pathlib.Path(file_path).suffix.lower()
+    language_map = {
+        '.py': 'python',
+        '.java': 'java',
+        '.cpp': 'cpp',
+        '.cc': 'cpp',
+        '.cxx': 'cpp',
+        '.js': 'javascript',
+        '.go': 'go'
+    }
+    detected_language = language_map.get(file_ext, 'python')
+    
+    # Parse test cases from comments if not provided
+    if test_cases is None and enable_logical_analysis:
+        test_cases = parse_test_cases_from_comments(initial_code)
+        if test_cases:
+            print(f"📝 Found {len(test_cases)} test case(s) in code comments")
     
     # Main repair loop
     while current_iteration < max_iterations:
@@ -107,9 +138,103 @@ def autonomous_repair(
             with open(file_path, 'r', encoding='utf-8') as f:
                 current_code = f.read()
             
-            # STEP 2.5: Validate logic even when code runs
+            # STEP 2.5: Run test cases if provided
+            if test_cases:
+                print("\n🧪 Running test cases...")
+                validator = TestCaseValidator(detected_language)
+                test_results = validator.run_tests(current_code, test_cases)
+                
+                failed_tests = validator.get_failed_tests()
+                if failed_tests:
+                    print(f"   ❌ {len(failed_tests)}/{len(test_cases)} tests failed")
+                    
+                    # Trigger logical analysis with test case data
+                    if enable_logical_analysis:
+                        print("\n🔍 Running logical analysis on failed tests...")
+                        test_data = [r.to_dict() for r in test_results]
+                        logical_analysis_results = analyze_logic(current_code, detected_language, test_data)
+                        
+                        if logical_analysis_results['logical_errors']:
+                            print(f"   🎯 Found {len(logical_analysis_results['logical_errors'])} logical error(s):")
+                            for err in logical_analysis_results['logical_errors']:
+                                severity_emoji = {'low': '🟢', 'medium': '🟡', 'high': '🔴', 'critical': '🔴'}
+                                emoji = severity_emoji.get(err['severity'], '🟡')
+                                print(f"   {emoji} Line {err['line']}: {err['message']}")
+                                if err.get('suggested_fix'):
+                                    print(f"      💡 {err['suggested_fix']}")
+                            
+                            # Try to apply the suggested fix
+                            # For now, we'll continue to semantic/logical validation
+                            # Future: generate patches based on logical_analysis_results
+                else:
+                    print(f"   ✅ All {len(test_cases)} tests passed")
+            
+            # STEP 2.6: Run deterministic logical analysis (even without test cases)
+            if enable_logical_analysis and not test_cases:
+                print("\n🔍 Running deterministic logical analysis...")
+                logical_analysis_results = analyze_logic(current_code, detected_language)
+                
+                if logical_analysis_results['logical_errors']:
+                    print(f"   ⚠️ Found {len(logical_analysis_results['logical_errors'])} logical issue(s):")
+                    for err in logical_analysis_results['logical_errors']:
+                        severity_emoji = {'low': '🟢', 'medium': '🟡', 'high': '🔴', 'critical': '🔴'}
+                        emoji = severity_emoji.get(err['severity'], '🟡')
+                        print(f"   {emoji} Line {err['line']}: {err['message']}")
+                        if err.get('suggested_fix'):
+                            print(f"      💡 {err['suggested_fix']}")
+                else:
+                    print("   ✓ No logical issues detected")
+            
+            # STEP 2.7: Validate logic (existing validator)
             print("\n🧠 Validating logic...")
             logic_validation = validate_logic(sandbox_result, current_code)
+            
+            # STEP 2.6: Check for semantic errors
+            print("\n🔍 Checking for semantic/algorithmic errors...")
+            semantic_issues = detect_semantic_errors(
+                current_code, 
+                sandbox_result.get('stdout', ''),
+                {}
+            )
+            
+            if semantic_issues:
+                print(f"   ⚠️ FOUND {len(semantic_issues)} SEMANTIC ISSUE(S)!")
+                for issue in semantic_issues:
+                    severity_emoji = {'HIGH': '🔴', 'MEDIUM': '🟡', 'LOW': '🟢'}
+                    emoji = severity_emoji.get(issue.get('severity', 'MEDIUM'), '🟡')
+                    print(f"   {emoji} {issue['message']}")
+                
+                # Try to generate fixes for semantic errors
+                semantic_fixes = suggest_fixes_for_semantic_errors(semantic_issues, current_code)
+                
+                if semantic_fixes:
+                    print(f"\n🔧 Generated {len(semantic_fixes)} semantic fix(es)")
+                    
+                    # Apply first semantic fix
+                    fix = semantic_fixes[0]
+                    print(f"   Applying: {fix['description']}")
+                    
+                    # Write fixed code
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(fix['patched_code'])
+                    
+                    # Log iteration
+                    iteration_log = {
+                        'iteration': current_iteration,
+                        'error_type': 'SemanticError',
+                        'error_message': semantic_issues[0]['message'],
+                        'selected_patch_id': fix['id'],
+                        'description': fix['description'],
+                        'status': 'APPLIED_SEMANTIC_FIX'
+                    }
+                    iteration_logs.append(iteration_log)
+                    
+                    # Continue to next iteration
+                    continue
+                else:
+                    print("   ℹ️ No automatic fixes available for these semantic issues")
+            else:
+                print("   ✓ No semantic issues detected")
             
             if not logic_validation['is_logically_correct']:
                 print("   ⚠️ LOGICAL ISSUES DETECTED!")
@@ -194,7 +319,9 @@ def autonomous_repair(
                 final_code,
                 iteration_logs,
                 current_iteration,
-                initial_code
+                initial_code,
+                test_results=[r.to_dict() for r in test_results] if test_results else None,
+                logical_analysis=logical_analysis_results
             )
         
         # Code has errors - proceed with repair
@@ -370,10 +497,12 @@ def _create_success_result(
     final_code: str, 
     iterations: List[Dict[str, Any]], 
     total: int,
-    initial_code: str = ""
+    initial_code: str = "",
+    test_results=None,
+    logical_analysis=None
 ) -> Dict[str, Any]:
     """Create a successful repair result."""
-    return {
+    result = {
         "success": True,
         "final_code": final_code,
         "initial_code": initial_code,
@@ -382,6 +511,14 @@ def _create_success_result(
         "final_status": "success",
         "reason": "Code successfully repaired and executes without errors"
     }
+    
+    if test_results is not None:
+        result["test_results"] = test_results
+    
+    if logical_analysis is not None:
+        result["logical_analysis"] = logical_analysis
+    
+    return result
 
 
 def _create_failure_result(

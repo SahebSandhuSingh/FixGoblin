@@ -71,8 +71,15 @@ Examples:
     parser.add_argument('--log', help='Save repair log to JSON file')
     parser.add_argument('--efficiency', action='store_true',
                        help='Enable efficiency mode (Python only)')
+    parser.add_argument('--enable-logical-analysis', action='store_true', default=True,
+                       help='Enable deterministic logical error detection (default: enabled)')
+    parser.add_argument('--disable-logical-analysis', action='store_true',
+                       help='Disable logical error detection (faster but less thorough)')
     
     args = parser.parse_args()
+    
+    # Determine if logical analysis should be enabled
+    enable_logical = args.enable_logical_analysis and not args.disable_logical_analysis
     
     # Detect language from file extension
     ext = os.path.splitext(args.file)[1].lower()
