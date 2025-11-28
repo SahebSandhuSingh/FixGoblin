@@ -15,16 +15,16 @@ FixGoblin is an intelligent, autonomous debugging system that automatically dete
 | **Java** | Full | Compilation, Type, Runtime | ✅ |
 | **JavaScript** | Full | Syntax, Runtime, Type | ✅ |
 | **C** | Full | Syntax, Compilation, Runtime | ✅ |
-| **Go** | Partial | Error Detection | In Development |
+
 
 ### Core Capabilities
 
 - **Multi-language debugging** with language-specific error parsing and patch generation
 - **Deterministic logical error detection** using AST, CFG, and DFA analysis
+- **Domain-specific language (DSL)** for custom repair rules
 - **Autonomous iterative repair** with intelligent patch optimization
 - **Test-driven validation** with automatic test case execution
 - **Sandboxed execution** with resource limits and security controls
-- **Domain-specific language (DSL)** for custom repair rules
 - **Web interface** for interactive debugging sessions
 - **Fully offline operation** with no external dependencies
 
@@ -136,75 +136,20 @@ python fixgoblin.py --help
 
 The core system requires only Python standard library. External dependencies (Streamlit) are only needed for the web interface.
 
-## Docker Installation (Recommended)
+## 🐳 Docker Deployment
 
-Run FixGoblin in an isolated container with all language runtimes pre-installed:
+**Docker Hub:** https://hub.docker.com/r/adityaaa073/fixgoblin
 
+**Quick Start:**
 ```bash
-# Using Docker Compose (easiest)
-docker-compose up -d
+# Pull from Docker Hub
+docker pull adityaaa073/fixgoblin:latest
 
-# Access web UI at http://localhost:8501
+# Run the application
+docker run -p 8501:8501 adityaaa073/fixgoblin:latest
 
-# Or build and run manually
-docker build -t fixgoblin .
-docker run -d -p 8501:8501 fixgoblin
-```
-
-**Docker CLI Usage:**
-```bash
-# Repair a file using Docker
-docker run -v $(pwd)/workspace:/workspace fixgoblin \
-    python fixgoblin.py /workspace/your_code.py
-
-# With options
-docker run -v $(pwd)/workspace:/workspace fixgoblin \
-    python fixgoblin.py /workspace/code.py --max-iterations 10 --log /workspace/log.json
-```
-
-See **[DOCKER.md](DOCKER.md)** for complete Docker documentation.
-
-## Usage
-
-### Command-Line Interface
-
-#### Basic Usage
-
-```bash
-# Automatic repair with default settings
-python fixgoblin.py <file>
-
-# Python file
-python fixgoblin.py script.py
-
-# C++ file
-python fixgoblin.py program.cpp
-
-# Java file
-python fixgoblin.py Application.java
-
-# JavaScript file
-python fixgoblin.py app.js
-```
-
-#### Advanced Options
-
-```bash
-# Specify maximum repair iterations
-python fixgoblin.py code.py --max-iterations 10
-
-# Force language detection
-python fixgoblin.py script.txt --language python
-
-# Save detailed repair log
-python fixgoblin.py code.py --log repair_log.json
-
-# Enable efficiency optimization
-python fixgoblin.py code.py --efficiency
-
-# Disable logical analysis (faster, less thorough)
-python fixgoblin.py code.py --disable-logical-analysis
-```
+# Access the web UI
+open http://localhost:8501
 
 ### Web Interface
 
